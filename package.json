@@ -1,0 +1,28 @@
+{
+  "name": "jwt-plus",
+  "version": "0.0.0",
+  "description": "An opinionated JWT library with sensible defaults that implements the complete token flow.",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run test:lint && npm run test:coverage",
+    "test:coverage": "jest tests --coverage",
+    "test:lint": "eslint tests index.js"
+  },
+  "repository": "https://github.com/wearereasonablepeople/jwt-plus",
+  "author": "Abdulrahman Amri",
+  "license": "MIT",
+  "dependencies": {
+    "jsonwebtoken": "latest",
+    "ramda": "^0.25.0",
+    "rand-token": "^0.4.0",
+    "standard-error": "^1.1.0",
+    "tcomb": "^3.2.24"
+  },
+  "devDependencies": {
+    "codecov": "^3.0.0",
+    "eslint": "^4.15.0",
+    "eslint-config-warp": "^2.1.0",
+    "jest": "^21.0.0",
+    "ms": "latest"
+  }
+}
