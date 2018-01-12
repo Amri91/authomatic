@@ -140,16 +140,16 @@ describe('jwtPlus', () => {
       const content = {userId: '123'};
       const object = await jwtPlus.sign(content, secret);
       expect(object).toEqual(expect.objectContaining({
-        token: expect.any(String),
-        tokenTTL: expect.any(Number),
+        accessToken: expect.any(String),
+        accessTokenExpiresIn: expect.any(Number),
         refreshToken: expect.any(String),
-        refreshTokenTTL: expect.any(Number)
+        refreshTokenExpiresIn: expect.any(Number)
       }));
     });
     it('should change refreshToken life when using rememberMe option', async () => {
       const content = {userId: '123'};
       const object = await jwtPlus.sign(content, secret, true);
-      expect(object.refreshTokenTTL).toBe(ms('7d'));
+      expect(object.refreshTokenExpiresIn).toBe(ms('7d'));
     });
   });
 });
