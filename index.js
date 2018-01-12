@@ -40,7 +40,7 @@ const regularRefreshTokenLifeInMS = 1000 * 60 * 60 * 24;
 // 7 days
 const prolongedRefreshTokenLifeInMS = 1000 * 60 * 60 * 24 * 7;
 
-const Secret = t.refinement(t.String, s => s.length >= 20, 'Secret');
+const Secret = t.refinement(t.String, s => s.length >= 20, 'Proper Secret (char length >= 20)');
 const ExpiresIn = t.refinement(t.Number, e => e <= tokenLifeUpperLimitInSeconds, 'ExpiresIn');
 const Algorithm = t.enums.of(['HS256', 'HS384', 'HS512', 'RS256'], 'Algorithm');
 
