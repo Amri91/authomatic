@@ -112,7 +112,7 @@ describe('jwtPlus', () => {
       try {
         await jwtPlus.refresh(refreshToken, oldToken, secret);
       } catch(e) {
-        expect(e.message).toBe('Token mismatch');
+        expect(e.name).toBe('InvalidAccessToken');
       }
     });
     it('should throw an error if the refresh token expired', async () => {
@@ -124,7 +124,7 @@ describe('jwtPlus', () => {
       try {
         await jwtPlus.refresh(refreshToken, token, secret);
       } catch(e) {
-        expect(e.message).toBe('Refresh token expired');
+        expect(e.name).toBe('RefreshTokenExpiredError');
       }
     });
   });

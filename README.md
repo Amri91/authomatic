@@ -3,4 +3,10 @@
 [![codecov](https://codecov.io/gh/wearereasonablepeople/jwt-plus/branch/master/graph/badge.svg?token=tHRvIF5F3v)](https://codecov.io/gh/wearereasonablepeople/jwt-plus)
 
 
-Opinionated JWT library with sane defaults.
+## Description
+An opinionated JWT library with sensible defaults that implements the complete token flow.
+
+## Install
+```
+npm install jwt-plus
+```
