@@ -128,9 +128,16 @@ describe('jwtPlus', () => {
       }
     });
   });
-  describe('#signIn', () => {
+  describe('#sign', () => {
     it('should instruct jwt.sign to sign a token with correct arguments', async () => {
       const content = {userId: '123'};
+      await jwtPlus.sign(content, secret);
+      expect(fakeJWT.sign.mock.calls[0][0].pld).toEqual(content);
+      expect(fakeJWT.sign.mock.calls[0][1]).toBe(secret);
+      expect(fakeJWT.sign.mock.calls[0][2]).toEqual(acceptableSignOptions);
+    });
+    it('should allow payload to contain unstrictly defined properties', async () => {
+      const content = {userId: '123', someProp: '123'};
       await jwtPlus.sign(content, secret);
       expect(fakeJWT.sign.mock.calls[0][0].pld).toEqual(content);
       expect(fakeJWT.sign.mock.calls[0][1]).toBe(secret);
