@@ -43,7 +43,7 @@ const prolongedRefreshTokenLifeInMS = 1000 * 60 * 60 * 24 * 7;
 const Secret = t.refinement(t.String, s => s.length >= 20, 'Secret');
 const ExpiresIn = t.refinement(t.Number, e => e <= tokenLifeUpperLimitInSeconds, 'ExpiresIn');
 const Algorithm = t.enums.of(['HS256', 'HS384', 'HS512', 'RS256'], 'Algorithm');
-const UserId = t.union([t.String, t.Number]);
+const UserId = t.Any;
 const RefreshToken = t.String;
 const Token = t.String;
 const RememberMe = t.Boolean;
