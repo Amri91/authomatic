@@ -80,11 +80,11 @@ const Payload = UserSignOptions.extend(t.interface({
 const _getTTL = rememberMe =>
   rememberMe ? prolongedRefreshTokenLifeInMS : regularRefreshTokenLifeInMS;
 
-const _getTokensObj = (token, tokenTTL, refreshToken, refreshTokenTTL) => ({
-  token,
-  tokenTTL,
+const _getTokensObj = (accessToken, accessTokenExpiresIn, refreshToken, refreshTokenExpiresIn) => ({
+  accessToken,
+  accessTokenExpiresIn,
   refreshToken,
-  refreshTokenTTL
+  refreshTokenExpiresIn
 });
 
 module.exports = class JWTPlus {
