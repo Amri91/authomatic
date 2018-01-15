@@ -15,6 +15,9 @@ const RefreshTokenExpiredOrNotFound =
 const InvalidAccessToken =
   new StandardError('The access token provided is invalid', {name: 'InvalidAccessToken'});
 
+// Seconds -> Seconds Since the Epoch
+const _expiresInToEpoch = seconds => Math.floor(Date.now() / 1000) + seconds;
+
 const Store = t.interface({
   // Signature: (userId, refreshToken)
   remove: t.Function,
@@ -49,8 +52,8 @@ const Secret = secret => {
   t.assert(secret.length >= 20, 'Must be greater than or equal 20 characters');
   return secret;
 };
-
-const ExpiresIn = t.refinement(t.Number, e => e <= tokenLifeUpperLimitInSeconds, 'ExpiresIn');
+const ExpiresIn = t.refinement(t.Integer, e => e <= tokenLifeUpperLimitInSeconds, 'ExpiresIn');
+const ExpiresAt = t.Integer;
 const Algorithm = t.enums.of(['HS256', 'HS384', 'HS512', 'RS256'], 'Algorithm');
 const UserId = t.Any;
 const RefreshToken = t.String;
@@ -82,18 +85,18 @@ const UserSignOptions = t.interface({
 
 const Payload = UserSignOptions.extend(t.interface({
   pld: pld,
-  exp: ExpiresIn,
+  exp: ExpiresAt,
   rme: t.Boolean
 }, {name: 'Payload', strict: true}));
 
 const _getTTL = rememberMe =>
   rememberMe ? prolongedRefreshTokenLifeInMS : regularRefreshTokenLifeInMS;
 
-const _getTokensObj = (accessToken, accessTokenExpiresIn, refreshToken, refreshTokenExpiresIn) => ({
+const _getTokensObj = (accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt) => ({
   accessToken,
-  accessTokenExpiresIn,
+  accessTokenExpiresAt,
   refreshToken,
-  refreshTokenExpiresIn
+  refreshTokenExpiresAt
 });
 
 module.exports = class JWTPlus {
@@ -114,7 +117,7 @@ module.exports = class JWTPlus {
     this._defaultSignInOptions = UserSignOptions(defaultSignInOptions);
     this._defaultVerifyOptions = VerifyOptions(defaultVerifyOptions);
     this._algorithm = Algorithm(algorithm);
-    this._expiresIn = ExpiresIn(expiresIn);
+    this._exp = _expiresInToEpoch(ExpiresIn(expiresIn));
     this._jwt = JWT(jwt);
   }
 
@@ -149,7 +152,7 @@ module.exports = class JWTPlus {
       Payload({pld: content,
         ...mergeAll([
           this._defaultSignInOptions, UserSignOptions(signOptions),
-          {exp: this._expiresIn, rme: rememberMe}
+          {exp: this._exp, rme: rememberMe}
         ])}),
       // Secret
       Secret(secret),
@@ -157,9 +160,10 @@ module.exports = class JWTPlus {
       {algorithm: this._algorithm});
     const ttl = _getTTL(rememberMe);
     return _getTokensObj(token,
-      this._expiresIn,
+      this._exp,
       await this._createRefreshToken(content.userId, token, ttl),
-      ttl);
+      _expiresInToEpoch(ttl / 1000)
+    );
   }
 
   /**

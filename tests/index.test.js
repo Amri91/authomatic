@@ -2,7 +2,6 @@
 
 const JWTPlus = require('../index');
 const {omit, merge} = require('ramda');
-const ms = require('ms');
 
 const customAlgorithm = 'HS256';
 
@@ -10,7 +9,6 @@ const acceptableVerifyOptions = {
   algorithm: customAlgorithm
 };
 
-const expiresIn = 1800;
 const acceptableSignOptions = {
   algorithm: customAlgorithm
 };
@@ -32,7 +30,7 @@ describe('jwtPlus', () => {
     fakeJWT = {
       verify: jest.fn(token => token),
       sign: jest.fn(() => 'I am a token'),
-      decode: jest.fn(() => ({exp: expiresIn, rme: true, pld: {userId: 123}}))
+      decode: jest.fn(() => ({exp: 123, rme: true, pld: {userId: 123}}))
     };
     jwtPlus = new JWTPlus({store: fakeStore, algorithm: customAlgorithm, jwt: fakeJWT});
   });
@@ -148,15 +146,16 @@ describe('jwtPlus', () => {
       const object = await jwtPlus.sign(content, secret);
       expect(object).toEqual(expect.objectContaining({
         accessToken: expect.any(String),
-        accessTokenExpiresIn: expect.any(Number),
+        accessTokenExpiresAt: expect.any(Number),
         refreshToken: expect.any(String),
-        refreshTokenExpiresIn: expect.any(Number)
+        refreshTokenExpiresAt: expect.any(Number)
       }));
     });
-    it('should change refreshToken life when using rememberMe option', async () => {
+    it('should prolong the refreshToken ttl when rememberMe is true', async () => {
       const content = {userId: '123'};
-      const object = await jwtPlus.sign(content, secret, true);
-      expect(object.refreshTokenExpiresIn).toBe(ms('7d'));
+      const {refreshTokenExpiresAt: longTTL} = await jwtPlus.sign(content, secret, true);
+      const {refreshTokenExpiresAt: shortTTL} = await jwtPlus.sign(content, secret);
+      expect(longTTL > shortTTL).toBeTruthy();
     });
   });
 });
