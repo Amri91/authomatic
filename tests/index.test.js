@@ -124,7 +124,7 @@ describe('jwtPlus', () => {
       try {
         await jwtPlus.refresh(refreshToken, token, secret);
       } catch(e) {
-        expect(e.name).toBe('RefreshTokenExpiredError');
+        expect(e.name).toBe('RefreshTokenExpiredOrNotFound');
       }
     });
   });

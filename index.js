@@ -6,8 +6,12 @@ const generator = randToken.generator({source: 'crypto'});
 const t = require('tcomb');
 const {mergeAll, omit} = require('ramda');
 const StandardError = require('standard-error');
-const RefreshTokenExpired =
-  new StandardError('The refresh token has expired', {name: 'RefreshTokenExpiredError'});
+
+const RefreshTokenExpiredOrNotFound =
+  new StandardError(
+    'The refresh token has expired or was not found',
+    {name: 'RefreshTokenExpiredOrNotFound'}
+  );
 const InvalidAccessToken =
   new StandardError('The access token provided is invalid', {name: 'InvalidAccessToken'});
 
@@ -189,7 +193,7 @@ module.exports = class JWTPlus {
     // Remove the refresh token even if the following operations were not successful.
     // RefreshTokens are one time use only
     if(!await this._store.remove(untrustedPayload.pld.userId, refreshToken)) {
-      throw RefreshTokenExpired;
+      throw RefreshTokenExpiredOrNotFound;
     }
     // RefreshTokens works with only one AccessToken
     if (trustedToken !== oldToken) {throw InvalidAccessToken;}
