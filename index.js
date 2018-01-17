@@ -4,7 +4,7 @@ const jsonwebtoken = require('jsonwebtoken');
 const randToken = require('rand-token');
 const generator = randToken.generator({source: 'crypto'});
 const t = require('tcomb');
-const {mergeAll, dissoc} = require('ramda');
+const {mergeAll, omit} = require('ramda');
 const StandardError = require('standard-error');
 const RefreshTokenExpired =
   new StandardError('The refresh token has expired', {name: 'RefreshTokenExpiredError'});
@@ -192,7 +192,7 @@ module.exports = class JWTPlus {
       Secret(secret),
       rememberMe,
       // Ignoring exp
-      UserSignOptions({...dissoc('exp', jwtOptions), ...signOptions})
+      UserSignOptions({...omit(['exp', 'iat'], jwtOptions), ...signOptions})
     );
   }
 
