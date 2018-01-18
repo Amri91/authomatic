@@ -48,8 +48,14 @@ const Secret = secret => {
 
 const ExpiresIn = t.refinement(t.Number, e => e <= tokenLifeUpperLimitInSeconds, 'ExpiresIn');
 const Algorithm = t.enums.of(['HS256', 'HS384', 'HS512', 'RS256'], 'Algorithm');
+const UserId = t.Any;
+const RefreshToken = t.String;
+const Token = t.String;
+const RememberMe = t.Boolean;
 
-const pld = t.refinement(t.Object, o => typeof o.userId !== 'undefined', 'pld');
+const pld = t.interface({
+  userId: UserId
+}, {name: 'Payload', strict: false});
 
 const VerifyOptions = t.interface({
   audience: t.maybe(t.union([t.String, t.Array, t.Object])),
@@ -76,10 +82,10 @@ const Payload = UserSignOptions.extend(t.interface({
   rme: t.Boolean
 }, {name: 'Payload', strict: true}));
 
-const getTTL = rememberMe =>
+const _getTTL = rememberMe =>
   rememberMe ? prolongedRefreshTokenLifeInMS : regularRefreshTokenLifeInMS;
 
-const getTokensObj = (accessToken, accessTokenExpiresIn, refreshToken, refreshTokenExpiresIn) => ({
+const _getTokensObj = (accessToken, accessTokenExpiresIn, refreshToken, refreshTokenExpiresIn) => ({
   accessToken,
   accessTokenExpiresIn,
   refreshToken,
@@ -133,6 +139,7 @@ module.exports = class JWTPlus {
    * }>}
    */
   async sign(content, secret, rememberMe = false, signOptions = {}) {
+    RememberMe(rememberMe);
     const token = this._jwt.sign(
       // Payload
       Payload({pld: content,
@@ -144,8 +151,8 @@ module.exports = class JWTPlus {
       Secret(secret),
       // Options
       {algorithm: this._algorithm});
-    const ttl = getTTL(rememberMe);
-    return getTokensObj(token,
+    const ttl = _getTTL(rememberMe);
+    return _getTokensObj(token,
       this._expiresIn,
       await this._createRefreshToken(content.userId, token, ttl),
       ttl);
@@ -159,7 +166,7 @@ module.exports = class JWTPlus {
    * @returns {Promise<*>}
    */
   verify(token, secret, verifyOptions = {}) {
-    return this._jwt.verify(token, Secret(secret),
+    return this._jwt.verify(Token(token), Secret(secret),
       mergeAll([this._defaultVerifyOptions, VerifyOptions(verifyOptions),
         {algorithm: this._algorithm}]));
   }
@@ -174,8 +181,8 @@ module.exports = class JWTPlus {
    * @returns {Promise<*>}
    */
   async refresh(refreshToken, oldToken, secret, signOptions) {
-    t.String(refreshToken);
-    t.String(oldToken);
+    RefreshToken(refreshToken);
+    Token(oldToken);
     const untrustedPayload = Payload(this._jwt.decode(oldToken));
     const trustedToken =
       await this._store.getAccessToken(untrustedPayload.pld.userId, refreshToken);
@@ -208,7 +215,7 @@ module.exports = class JWTPlus {
    * @returns {Promise}
    */
   invalidateRefreshToken(userId, refreshToken) {
-    return this._store.remove(userId, refreshToken);
+    return this._store.remove(UserId(userId), RefreshToken(refreshToken));
   }
 
   /**
@@ -216,5 +223,5 @@ module.exports = class JWTPlus {
    * @param {String|Number} userId
    * @returns {Promise}
    */
-  invalidateAllRefreshTokens(userId) {return this._store.removeAll(userId);}
+  invalidateAllRefreshTokens(userId) {return this._store.removeAll(UserId(userId));}
 };
