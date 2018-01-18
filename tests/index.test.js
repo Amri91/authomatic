@@ -32,7 +32,7 @@ describe('jwtPlus', () => {
     fakeJWT = {
       verify: jest.fn(token => token),
       sign: jest.fn(() => 'I am a token'),
-      decode: jest.fn(() => ({payload: {exp: expiresIn, rme: true, pld: {userId: 123}}}))
+      decode: jest.fn(() => ({exp: expiresIn, rme: true, pld: {userId: 123}}))
     };
     jwtPlus = new JWTPlus({store: fakeStore, algorithm: customAlgorithm, jwt: fakeJWT});
   });

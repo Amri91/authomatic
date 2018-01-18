@@ -4,7 +4,7 @@ const jsonwebtoken = require('jsonwebtoken');
 const randToken = require('rand-token');
 const generator = randToken.generator({source: 'crypto'});
 const t = require('tcomb');
-const {mergeAll, dissoc} = require('ramda');
+const {mergeAll, omit} = require('ramda');
 const StandardError = require('standard-error');
 const RefreshTokenExpired =
   new StandardError('The refresh token has expired', {name: 'RefreshTokenExpiredError'});
@@ -40,7 +40,12 @@ const regularRefreshTokenLifeInMS = 1000 * 60 * 60 * 24;
 // 7 days
 const prolongedRefreshTokenLifeInMS = 1000 * 60 * 60 * 24 * 7;
 
-const Secret = t.refinement(t.String, s => s.length >= 20, 'Secret');
+const Secret = secret => {
+  t.String(secret);
+  t.assert(secret.length >= 20, 'Must be greater than or equal 20 characters');
+  return secret;
+};
+
 const ExpiresIn = t.refinement(t.Number, e => e <= tokenLifeUpperLimitInSeconds, 'ExpiresIn');
 const Algorithm = t.enums.of(['HS256', 'HS384', 'HS512', 'RS256'], 'Algorithm');
 const UserId = t.Any;
@@ -178,18 +183,19 @@ module.exports = class JWTPlus {
   async refresh(refreshToken, oldToken, secret, signOptions) {
     RefreshToken(refreshToken);
     Token(oldToken);
-    const untrustedPayload = Payload(this._jwt.decode(oldToken).payload);
-    const trustedToken = await this._store.getAccessToken(untrustedPayload.userId, refreshToken);
+    const untrustedPayload = Payload(this._jwt.decode(oldToken));
+    const trustedToken =
+      await this._store.getAccessToken(untrustedPayload.pld.userId, refreshToken);
     // Remove the refresh token even if the following operations were not successful.
     // RefreshTokens are one time use only
-    if(!await this._store.remove(untrustedPayload.userId, refreshToken)) {
+    if(!await this._store.remove(untrustedPayload.pld.userId, refreshToken)) {
       throw RefreshTokenExpired;
     }
     // RefreshTokens works with only one AccessToken
     if (trustedToken !== oldToken) {throw InvalidAccessToken;}
 
     // Token is safe since it is stored by us
-    const {payload: {pld: payload, rme: rememberMe, ...jwtOptions}} =
+    const {pld: payload, rme: rememberMe, ...jwtOptions} =
       this._jwt.decode(trustedToken);
 
     // Finally, sign new tokens for the user
@@ -198,7 +204,7 @@ module.exports = class JWTPlus {
       Secret(secret),
       rememberMe,
       // Ignoring exp
-      UserSignOptions({...dissoc('exp', jwtOptions), ...signOptions})
+      UserSignOptions({...omit(['exp', 'iat'], jwtOptions), ...signOptions})
     );
   }
 
