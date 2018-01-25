@@ -49,7 +49,7 @@ const prolongedRefreshTokenLifeInMS = 1000 * 60 * 60 * 24 * 7;
 
 const Secret = secret => {
   t.String(secret);
-  t.assert(secret.length >= 20, 'Must be greater than or equal 20 characters');
+  t.assert(secret.length >= 20, 'The secret must be greater than or equal 20 characters');
   return secret;
 };
 const ExpiresIn = t.refinement(t.Integer, e => e <= tokenLifeUpperLimitInSeconds, 'ExpiresIn');
@@ -117,7 +117,7 @@ module.exports = class JWTPlus {
     this._defaultSignInOptions = UserSignOptions(defaultSignInOptions);
     this._defaultVerifyOptions = VerifyOptions(defaultVerifyOptions);
     this._algorithm = Algorithm(algorithm);
-    this._exp = _expiresInToEpoch(ExpiresIn(expiresIn));
+    this._expiresIn = ExpiresIn(expiresIn);
     this._jwt = JWT(jwt);
   }
 
@@ -146,13 +146,14 @@ module.exports = class JWTPlus {
    * }>}
    */
   async sign(content, secret, rememberMe = false, signOptions = {}) {
+    const exp = _expiresInToEpoch(this._expiresIn);
     RememberMe(rememberMe);
     const token = this._jwt.sign(
       // Payload
       Payload({pld: content,
         ...mergeAll([
           this._defaultSignInOptions, UserSignOptions(signOptions),
-          {exp: this._exp, rme: rememberMe}
+          {exp, rme: rememberMe}
         ])}),
       // Secret
       Secret(secret),
@@ -160,7 +161,7 @@ module.exports = class JWTPlus {
       {algorithm: this._algorithm});
     const ttl = _getTTL(rememberMe);
     return _getTokensObj(token,
-      this._exp,
+      exp,
       await this._createRefreshToken(content.userId, token, ttl),
       _expiresInToEpoch(ttl / 1000)
     );
