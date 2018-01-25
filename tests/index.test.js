@@ -13,6 +13,8 @@ const acceptableSignOptions = {
   algorithm: customAlgorithm
 };
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 describe('jwtPlus', () => {
   let jwtPlus, fakeStore, fakeJWT;
   const userId = '123', token = '789', refreshToken = '456', secret = 'asdfasdfasdfasdf1234';
@@ -157,5 +159,17 @@ describe('jwtPlus', () => {
       const {refreshTokenExpiresAt: shortTTL} = await jwtPlus.sign(content, secret);
       expect(longTTL > shortTTL).toBeTruthy();
     });
+    it('should recalculate current time every time a new pair of tokens are created. Issue #21',
+      async () => {
+        const content = {userId: '123'};
+        const {accessTokenExpiresAt: firstAT, refreshTokenExpiresAt: firstRT} =
+          await jwtPlus.sign(content, secret);
+        await sleep(2000);
+        const {accessTokenExpiresAt: secondAT, refreshTokenExpiresAt: secondRT} =
+          await jwtPlus.sign(content, secret);
+        expect(firstAT < secondAT).toBeTruthy();
+        expect(firstRT < secondRT).toBeTruthy();
+      }
+    );
   });
 });
