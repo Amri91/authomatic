@@ -1,14 +1,15 @@
 {
-  "name": "jwt-plus",
+  "name": "authomatic",
   "version": "0.0.0",
   "description": "An opinionated JWT library with sensible defaults that implements the complete token flow.",
   "main": "index.js",
   "scripts": {
     "test": "npm run test:lint && npm run test:coverage",
     "test:coverage": "jest tests --coverage",
-    "test:lint": "eslint tests index.js"
+    "test:lint": "eslint tests index.js",
+    "docs": "jsdoc2md -t jsdoc2md/readme.hbs index.js > README.md"
   },
-  "repository": "https://github.com/wearereasonablepeople/jwt-plus",
+  "repository": "https://github.com/wearereasonablepeople/authomatic",
   "author": "Abdulrahman Amri",
   "license": "MIT",
   "dependencies": {
@@ -22,6 +23,7 @@
     "codecov": "^3.0.0",
     "eslint": "^4.15.0",
     "eslint-config-warp": "^2.1.0",
-    "jest": "^21.0.0"
+    "jest": "^21.0.0",
+    "jsdoc-to-markdown": "^4.0.1"
   }
 }
