@@ -5,25 +5,39 @@
   "main": "index.js",
   "scripts": {
     "test": "npm run test:lint && npm run test:coverage",
-    "test:coverage": "jest tests --coverage",
+    "test:coverage": "jest tests -i --coverage",
     "test:lint": "eslint tests index.js",
-    "docs": "jsdoc2md -t jsdoc2md/readme.hbs index.js > README.md"
+    "docs": "jsdoc2md -t jsdoc2md/readme.hbs index.js > README.md",
+    "redis": "npm run redis:remove && npm run redis:start",
+    "redis:start": "docker run --name redis-test -p 6379:6379 -d redis",
+    "redis:remove": "docker rm -f redis-test &> /dev/null || true"
   },
   "repository": "https://github.com/wearereasonablepeople/authomatic",
   "author": "Abdulrahman Amri",
   "license": "MIT",
   "dependencies": {
     "jsonwebtoken": "latest",
-    "ramda": "^0.25.0",
-    "rand-token": "^0.4.0",
     "standard-error": "^1.1.0",
     "tcomb": "^3.2.24"
   },
   "devDependencies": {
-    "codecov": "^3.0.0",
-    "eslint": "^4.15.0",
+    "authomatic-redis": "0.0.3",
+    "eslint": "^4.17.0",
     "eslint-config-warp": "^2.1.0",
-    "jest": "^21.0.0",
-    "jsdoc-to-markdown": "^4.0.1"
-  }
+    "jest": "^22.3.0",
+    "jsdoc-to-markdown": "^4.0.1",
+    "koa": "^2.4.1",
+    "koa-bodyparser": "^4.2.0",
+    "koa-router": "^7.4.0",
+    "ramda": "^0.25.0",
+    "redis": "^2.8.0",
+    "redisscan": "^2.0.0",
+    "supertest": "^3.0.0"
+  },
+  "keywords": [
+    "authentication",
+    "jwt",
+    "refresh-token",
+    "security"
+  ]
 }

@@ -1,7 +1,9 @@
 # authomatic
-[![Build Status](https://travis-ci.com/wearereasonablepeople/authomatic.svg?token=yQTBKvDF8NXw5WvCpzqf&branch=master)](https://travis-ci.com/wearereasonablepeople/authomatic)
-[![codecov](https://codecov.io/gh/wearereasonablepeople/authomatic/branch/master/graph/badge.svg?token=tHRvIF5F3v)](https://codecov.io/gh/wearereasonablepeople/authomatic)
-
+[![Build Status](https://travis-ci.org/wearereasonablepeople/authomatic.svg?branch=master)](https://travis-ci.org/wearereasonablepeople/authomatic)
+[![Maintainability](https://api.codeclimate.com/v1/badges/314b595549aca68c5c6c/maintainability)](https://codeclimate.com/github/wearereasonablepeople/authomatic/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/314b595549aca68c5c6c/test_coverage)](https://codeclimate.com/github/wearereasonablepeople/authomatic/test_coverage)
+[![dependencies Status](https://david-dm.org/wearereasonablepeople/authomatic/status.svg)](https://david-dm.org/wearereasonablepeople/authomatic)
+[![devDependencies Status](https://david-dm.org/awearereasonablepeople/authomatic/dev-status.svg)](https://david-dm.org/wearereasonablepeople/authomatic?type=dev)
 
 ## Description
 An opinionated JWT library with sensible defaults that supports refresh and access tokens.
@@ -11,6 +13,24 @@ An opinionated JWT library with sensible defaults that supports refresh and acce
 npm install authomatic
 ```
 
+## Available stores
+[Redis](https://github.com/wearereasonablepeople/authomatic-redis)
+
+Please create an issue if you need another store.
+
+## Examples
+[Koa Example](/examples/koa.js)
+
+## Quickstart
+```javascript
+const Store = require('authomatic-redis');
+const Authomatic = require('authomatic');
+const store = Store();
+const authomatic = new Authomatic({store});
+
+// Use authomatic functions
+```
+
 ## Test
 ```
 npm test
@@ -18,16 +38,38 @@ npm test
 
 ## Documentation
 
-## Classes
+## Typedefs
 
 <dl>
-<dt><a href="#Authomatic">Authomatic</a></dt>
-<dd></dd>
-</dl>
-
-## Constants
-
-<dl>
+<dt><a href="#Secret">Secret</a> : <code>String</code></dt>
+<dd><p>a string greater than 20 characters</p>
+</dd>
+<dt><a href="#AccessToken">AccessToken</a> : <code>String</code></dt>
+<dd><p>Regular JWT token.
+Its payload looks like this:</p>
+<pre><code class="language-javascript">{
+  &quot;uid&quot;: &quot;userId&quot;,
+  &quot;exp&quot;: &quot;someNumber&quot;,
+  &quot;jti&quot;: &quot;randomBytes&quot;,
+  ...otherClaims,
+  &quot;pld&quot;: {
+    ...otherUserContent
+  }
+}
+</code></pre>
+</dd>
+<dt><a href="#RefreshToken">RefreshToken</a> : <code>String</code></dt>
+<dd><p>A base64 encoded string.</p>
+</dd>
+<dt><a href="#Tokens">Tokens</a> : <code>Object</code></dt>
+<dd><p>Token pairs</p>
+</dd>
+<dt><a href="#VerifyOptions">VerifyOptions</a> : <code>Object</code></dt>
+<dd><p>Verify options to be used when verifying tokens</p>
+</dd>
+<dt><a href="#SignOptions">SignOptions</a> : <code>Object</code></dt>
+<dd><p>The allowed user options to for signing tokens</p>
+</dd>
 <dt><a href="#RefreshTokenExpiredOrNotFound">RefreshTokenExpiredOrNotFound</a> : <code>StandardError</code></dt>
 <dd><p>The refresh token has expired or was not found</p>
 </dd>
@@ -36,150 +78,50 @@ npm test
 </dd>
 </dl>
 
-## Typedefs
+<a name="Secret"></a>
 
-<dl>
-<dt><a href="#VerifyOptions">VerifyOptions</a> : <code>Object</code></dt>
-<dd><p>Verify options to be used when verifying tokens</p>
-</dd>
-<dt><a href="#UserSignOptions">UserSignOptions</a> : <code>Object</code></dt>
-<dd><p>The allowed user options to for signing tokens</p>
-</dd>
-<dt><a href="#Tokens">Tokens</a> : <code>Object</code></dt>
-<dd><p>Token pairs</p>
-</dd>
-</dl>
+## Secret : <code>String</code>
+a string greater than 20 characters
 
-<a name="Authomatic"></a>
+**Kind**: global typedef  
+<a name="AccessToken"></a>
 
-## Authomatic
-**Kind**: global class  
+## AccessToken : <code>String</code>
+Regular JWT token.
+Its payload looks like this:
+ ```js
+{
+  "uid": "userId",
+  "exp": "someNumber",
+  "jti": "randomBytes",
+  ...otherClaims,
+  "pld": {
+    ...otherUserContent
+  }
+}
+ ```
 
-* [Authomatic](#Authomatic)
-    * [new Authomatic(store, [algorithm], [expiresIn], [jwt], [defaultSignInOptions], [defaultVerifyOptions])](#new_Authomatic_new)
-    * [.sign(content, secret, rememberMe, [signOptions])](#Authomatic+sign) ⇒ [<code>Promise.&lt;Tokens&gt;</code>](#Tokens)
-    * [.verify(token, secret, [verifyOptions])](#Authomatic+verify) ⇒ <code>Promise.&lt;String&gt;</code>
-    * [.refresh(refreshToken, oldToken, secret, [signOptions])](#Authomatic+refresh) ⇒ [<code>Promise.&lt;Tokens&gt;</code>](#Tokens)
-    * [.invalidateRefreshToken(userId, refreshToken)](#Authomatic+invalidateRefreshToken) ⇒ <code>Promise.&lt;Number&gt;</code>
-    * [.invalidateAllRefreshTokens(userId)](#Authomatic+invalidateAllRefreshTokens) ⇒ <code>Promise.&lt;Number&gt;</code>
+**Kind**: global typedef  
+<a name="RefreshToken"></a>
 
-<a name="new_Authomatic_new"></a>
+## RefreshToken : <code>String</code>
+A base64 encoded string.
 
-### new Authomatic(store, [algorithm], [expiresIn], [jwt], [defaultSignInOptions], [defaultVerifyOptions])
-Constructor
+**Kind**: global typedef  
+<a name="Tokens"></a>
 
+## Tokens : <code>Object</code>
+Token pairs
 
-| Param | Type | Default | Description |
-| --- | --- | --- | --- |
-| store | <code>Object</code> |  |  |
-| [algorithm] | <code>string</code> | <code>&quot;HS256&quot;</code> | algorithm cannot be 'none' |
-| [expiresIn] | <code>Number</code> | <code>60 * 30</code> | expiration time in seconds. |
-| [jwt] | <code>Object</code> |  | jsonwebtoken instance, by default it uses require('jsonwebtoken') |
-| [defaultSignInOptions] | [<code>UserSignOptions</code>](#UserSignOptions) |  |  |
-| [defaultVerifyOptions] | [<code>VerifyOptions</code>](#VerifyOptions) |  |  |
-
-<a name="Authomatic+sign"></a>
-
-### authomatic.sign(content, secret, rememberMe, [signOptions]) ⇒ [<code>Promise.&lt;Tokens&gt;</code>](#Tokens)
-Returns access and refresh tokens
-
-**Kind**: instance method of [<code>Authomatic</code>](#Authomatic)  
-
-| Param | Type | Default | Description |
-| --- | --- | --- | --- |
-| content | <code>Object</code> |  | token's payload |
-| secret |  |  |  |
-| rememberMe | <code>Boolean</code> | <code>false</code> | if true, the token will last 7 days instead of 1. |
-| [signOptions] | [<code>UserSignOptions</code>](#UserSignOptions) |  | Options to be passed to jwt.sign |
-
-<a name="Authomatic+verify"></a>
-
-### authomatic.verify(token, secret, [verifyOptions]) ⇒ <code>Promise.&lt;String&gt;</code>
-Verifies token, might throw jwt.verify errors
-
-**Kind**: instance method of [<code>Authomatic</code>](#Authomatic)  
-**Returns**: <code>Promise.&lt;String&gt;</code> - decoded token  
-**Throws**:
-
-- JsonWebTokenError
-- TokenExpiredError
-Error info at [https://www.npmjs.com/package/jsonwebtoken#errors--codes](https://www.npmjs.com/package/jsonwebtoken#errors--codes)
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| token | <code>String</code> |  |
-| secret |  |  |
-| [verifyOptions] | [<code>VerifyOptions</code>](#VerifyOptions) | Options to pass to jwt.verify. |
-
-<a name="Authomatic+refresh"></a>
-
-### authomatic.refresh(refreshToken, oldToken, secret, [signOptions]) ⇒ [<code>Promise.&lt;Tokens&gt;</code>](#Tokens)
-Issues a new access token using a refresh token and an old token.
-There is no need to verify the old token provided because this method uses the stored one.
-
-**Kind**: instance method of [<code>Authomatic</code>](#Authomatic)  
-**Throws**:
-
-- [<code>RefreshTokenExpiredOrNotFound</code>](#RefreshTokenExpiredOrNotFound) RefreshTokenExpiredOrNotFound
-- [<code>InvalidAccessToken</code>](#InvalidAccessToken) InvalidAccessToken
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| refreshToken | <code>String</code> |  |
-| oldToken | <code>String</code> |  |
-| secret |  |  |
-| [signOptions] | [<code>UserSignOptions</code>](#UserSignOptions) | Options passed to jwt.sign |
-
-<a name="Authomatic+invalidateRefreshToken"></a>
-
-### authomatic.invalidateRefreshToken(userId, refreshToken) ⇒ <code>Promise.&lt;Number&gt;</code>
-Invalidates refresh token
-
-**Kind**: instance method of [<code>Authomatic</code>](#Authomatic)  
-**Returns**: <code>Promise.&lt;Number&gt;</code> - 1 if successful, 0 otherwise.  
-
-| Param | Type |
-| --- | --- |
-| userId | <code>String</code> \| <code>Number</code> | 
-| refreshToken | <code>String</code> | 
-
-<a name="Authomatic+invalidateAllRefreshTokens"></a>
-
-### authomatic.invalidateAllRefreshTokens(userId) ⇒ <code>Promise.&lt;Number&gt;</code>
-Invalidates all refresh tokens
-
-**Kind**: instance method of [<code>Authomatic</code>](#Authomatic)  
-**Returns**: <code>Promise.&lt;Number&gt;</code> - 1 if successful, 0 otherwise.  
-
-| Param | Type |
-| --- | --- |
-| userId | <code>String</code> \| <code>Number</code> | 
-
-<a name="RefreshTokenExpiredOrNotFound"></a>
-
-## RefreshTokenExpiredOrNotFound : <code>StandardError</code>
-The refresh token has expired or was not found
-
-**Kind**: global constant  
+**Kind**: global typedef  
 **Properties**
 
-| Name | Type | Default |
+| Name | Type | Description |
 | --- | --- | --- |
-| [name] | <code>String</code> | <code>&#x27;RefreshTokenExpiredOrNotFound&#x27;</code> | 
-
-<a name="InvalidAccessToken"></a>
-
-## InvalidAccessToken : <code>StandardError</code>
-The access token provided is invalid
-
-**Kind**: global constant  
-**Properties**
-
-| Name | Type | Default |
-| --- | --- | --- |
-| [name] | <code>String</code> | <code>&#x27;InvalidAccessToken&#x27;</code> | 
+| accessToken | [<code>AccessToken</code>](#AccessToken) |  |
+| accessTokenExpiresAt | <code>Number</code> | epoch |
+| refreshToken | [<code>RefreshToken</code>](#RefreshToken) |  |
+| refreshTokenExpiresAt | <code>Number</code> | epoch |
 
 <a name="VerifyOptions"></a>
 
@@ -200,9 +142,9 @@ Verify options to be used when verifying tokens
 | [maxAge] | <code>String</code> \| <code>Number</code> |  |
 | [clockTimestamp] | <code>Number</code> | overrides the clock for the verification process |
 
-<a name="UserSignOptions"></a>
+<a name="SignOptions"></a>
 
-## UserSignOptions : <code>Object</code>
+## SignOptions : <code>Object</code>
 The allowed user options to for signing tokens
 
 **Kind**: global typedef  
@@ -213,21 +155,29 @@ The allowed user options to for signing tokens
 | [nbf] | <code>Number</code> | 
 | [aud] | <code>String</code> | 
 | [iss] | <code>String</code> | 
-| [jti] | <code>String</code> | 
 | [sub] | <code>String</code> | 
 
-<a name="Tokens"></a>
+<a name="RefreshTokenExpiredOrNotFound"></a>
 
-## Tokens : <code>Object</code>
-Token pairs
+## RefreshTokenExpiredOrNotFound : <code>StandardError</code>
+The refresh token has expired or was not found
 
 **Kind**: global typedef  
 **Properties**
 
-| Name | Type | Description |
+| Name | Type | Default |
 | --- | --- | --- |
-| accessToken | <code>String</code> |  |
-| accessTokenExpiresAt | <code>Number</code> | epoch |
-| refreshToken | <code>String</code> |  |
-| refreshTokenExpiresAt | <code>Number</code> | epoch |
+| [name] | <code>String</code> | <code>&#x27;RefreshTokenExpiredOrNotFound&#x27;</code> | 
+
+<a name="InvalidAccessToken"></a>
+
+## InvalidAccessToken : <code>StandardError</code>
+The access token provided is invalid
+
+**Kind**: global typedef  
+**Properties**
+
+| Name | Type | Default |
+| --- | --- | --- |
+| [name] | <code>String</code> | <code>&#x27;InvalidAccessToken&#x27;</code> | 
 
