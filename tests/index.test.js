@@ -1,6 +1,6 @@
 'use strict';
 
-const JWTPlus = require('../index');
+const Authomatic = require('../index');
 const {omit, merge} = require('ramda');
 
 const customAlgorithm = 'HS256';
@@ -15,8 +15,8 @@ const acceptableSignOptions = {
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-describe('jwtPlus', () => {
-  let jwtPlus, fakeStore, fakeJWT;
+describe('authomatic', () => {
+  let authomatic, fakeStore, fakeJWT;
   const userId = '123', token = '789', refreshToken = '456', secret = 'asdfasdfasdfasdf1234';
   beforeEach(() => {
     fakeStore = {
@@ -34,95 +34,95 @@ describe('jwtPlus', () => {
       sign: jest.fn(() => 'I am a token'),
       decode: jest.fn(() => ({exp: 123, rme: true, pld: {userId: 123}}))
     };
-    jwtPlus = new JWTPlus({store: fakeStore, algorithm: customAlgorithm, jwt: fakeJWT});
+    authomatic = new Authomatic({store: fakeStore, algorithm: customAlgorithm, jwt: fakeJWT});
   });
 
   describe('#constructor', () => {
     it('should not allow incomplete store object', () => {
       // Store missing the remove function
-      expect(() => new JWTPlus({store: omit(['remove'], fakeStore)})).toThrow();
+      expect(() => new Authomatic({store: omit(['remove'], fakeStore)})).toThrow();
     });
     it('should not allow the none algorithm', () => {
-      expect(() => new JWTPlus({algorithm: 'none'})).toThrow();
+      expect(() => new Authomatic({algorithm: 'none'})).toThrow();
     });
     it('should not accept values greater than an hour', () => {
-      expect(() => new JWTPlus({expiresIn: 60 * 60 * 12})).toThrow();
+      expect(() => new Authomatic({expiresIn: 60 * 60 * 12})).toThrow();
     });
   });
   describe('#invalidateRefreshToken', () => {
     it('should instruct the store to remove the refresh token', () => {
-      jwtPlus.invalidateRefreshToken(userId, refreshToken);
+      authomatic.invalidateRefreshToken(userId, refreshToken);
       expect(fakeStore.remove.mock.calls[0][0]).toBe(userId);
       expect(fakeStore.remove.mock.calls[0][1]).toBe(refreshToken);
     });
     it('Should be truthy on success', () => {
-      expect(jwtPlus.invalidateRefreshToken(userId, refreshToken)).toBeTruthy();
+      expect(authomatic.invalidateRefreshToken(userId, refreshToken)).toBeTruthy();
     });
     it('Should be falsey if token was not found', () => {
       // Make remove unsuccessful
-      jwtPlus = new JWTPlus({store: merge(fakeStore, {remove: jest.fn(() => 0)})});
-      expect(jwtPlus.invalidateRefreshToken(userId, refreshToken)).toBeFalsy();
+      authomatic = new Authomatic({store: merge(fakeStore, {remove: jest.fn(() => 0)})});
+      expect(authomatic.invalidateRefreshToken(userId, refreshToken)).toBeFalsy();
     });
   });
   describe('#invalidateAllRefreshTokens', () => {
     it('should instruct the store to remove all refresh tokens', () => {
-      jwtPlus.invalidateAllRefreshTokens(userId);
+      authomatic.invalidateAllRefreshTokens(userId);
       expect(fakeStore.removeAll.mock.calls[0][0]).toBe(userId);
     });
     it('Should be truthy on success', () => {
-      expect(jwtPlus.invalidateAllRefreshTokens(userId)).toBeTruthy();
+      expect(authomatic.invalidateAllRefreshTokens(userId)).toBeTruthy();
     });
     it('Should be falsey if no tokens were found', () => {
       // make removeAll unsuccessful
-      jwtPlus = new JWTPlus({store: merge(fakeStore, {removeAll: jest.fn(() => 0)})});
-      expect(jwtPlus.invalidateAllRefreshTokens(userId)).toBeFalsy();
+      authomatic = new Authomatic({store: merge(fakeStore, {removeAll: jest.fn(() => 0)})});
+      expect(authomatic.invalidateAllRefreshTokens(userId)).toBeFalsy();
     });
   });
   describe('#verify', () => {
     it('should instruct jwt to verify the token', async () => {
-      await jwtPlus.verify(token, secret);
+      await authomatic.verify(token, secret);
       expect(fakeJWT.verify.mock.calls[0][0]).toBe(token);
       expect(fakeJWT.verify.mock.calls[0][1]).toBe(secret);
       expect(fakeJWT.verify.mock.calls[0][2]).toEqual(acceptableVerifyOptions);
     });
     it('should return jwt.verify results', async () => {
-      expect(await jwtPlus.verify(token, secret)).toBeTruthy();
+      expect(await authomatic.verify(token, secret)).toBeTruthy();
     });
   });
   describe('#refresh', () => {
     it('should instruct sign to refresh token with correct arguments', async () => {
       const trustedToken = '123';
-      jwtPlus = new JWTPlus({
+      authomatic = new Authomatic({
         // Make store returns expected token
         jwt: fakeJWT, store: merge(fakeStore, {getAccessToken: jest.fn(() => trustedToken)})
       });
       // Stub out sign
-      jwtPlus.sign = jest.fn();
-      await jwtPlus.refresh(refreshToken, trustedToken, secret);
-      expect(jwtPlus.sign.mock.calls[0][1]).toBe(secret);
-      expect(jwtPlus.sign.mock.calls[0][2]).toBeTruthy();
+      authomatic.sign = jest.fn();
+      await authomatic.refresh(refreshToken, trustedToken, secret);
+      expect(authomatic.sign.mock.calls[0][1]).toBe(secret);
+      expect(authomatic.sign.mock.calls[0][2]).toBeTruthy();
     });
     it('should throw an error if the tokens mismatch', async () => {
       const trustedToken = '123', oldToken = '1234';
       expect.assertions(1);
-      jwtPlus = new JWTPlus({
+      authomatic = new Authomatic({
         // Make store return expected token
         store: merge(fakeStore, {getAccessToken: jest.fn(() => trustedToken)}), jwt: fakeJWT
       });
       try {
-        await jwtPlus.refresh(refreshToken, oldToken, secret);
+        await authomatic.refresh(refreshToken, oldToken, secret);
       } catch(e) {
         expect(e.name).toBe('InvalidAccessToken');
       }
     });
     it('should throw an error if the refresh token expired', async () => {
       expect.assertions(1);
-      jwtPlus = new JWTPlus({
+      authomatic = new Authomatic({
         // Make remove operation unsuccessful
         store: merge(fakeStore, {remove: jest.fn(() => 0)}), jwt: fakeJWT
       });
       try {
-        await jwtPlus.refresh(refreshToken, token, secret);
+        await authomatic.refresh(refreshToken, token, secret);
       } catch(e) {
         expect(e.name).toBe('RefreshTokenExpiredOrNotFound');
       }
@@ -131,21 +131,21 @@ describe('jwtPlus', () => {
   describe('#sign', () => {
     it('should instruct jwt.sign to sign a token with correct arguments', async () => {
       const content = {userId: '123'};
-      await jwtPlus.sign(content, secret);
+      await authomatic.sign(content, secret);
       expect(fakeJWT.sign.mock.calls[0][0].pld).toEqual(content);
       expect(fakeJWT.sign.mock.calls[0][1]).toBe(secret);
       expect(fakeJWT.sign.mock.calls[0][2]).toEqual(acceptableSignOptions);
     });
     it('should allow payload to contain unstrictly defined properties', async () => {
       const content = {userId: '123', someProp: '123'};
-      await jwtPlus.sign(content, secret);
+      await authomatic.sign(content, secret);
       expect(fakeJWT.sign.mock.calls[0][0].pld).toEqual(content);
       expect(fakeJWT.sign.mock.calls[0][1]).toBe(secret);
       expect(fakeJWT.sign.mock.calls[0][2]).toEqual(acceptableSignOptions);
     });
     it('should return correct object', async () => {
       const content = {userId: '123'};
-      const object = await jwtPlus.sign(content, secret);
+      const object = await authomatic.sign(content, secret);
       expect(object).toEqual(expect.objectContaining({
         accessToken: expect.any(String),
         accessTokenExpiresAt: expect.any(Number),
@@ -155,18 +155,18 @@ describe('jwtPlus', () => {
     });
     it('should prolong the refreshToken ttl when rememberMe is true', async () => {
       const content = {userId: '123'};
-      const {refreshTokenExpiresAt: longTTL} = await jwtPlus.sign(content, secret, true);
-      const {refreshTokenExpiresAt: shortTTL} = await jwtPlus.sign(content, secret);
+      const {refreshTokenExpiresAt: longTTL} = await authomatic.sign(content, secret, true);
+      const {refreshTokenExpiresAt: shortTTL} = await authomatic.sign(content, secret);
       expect(longTTL > shortTTL).toBeTruthy();
     });
     it('should recalculate current time every time a new pair of tokens are created. Issue #21',
       async () => {
         const content = {userId: '123'};
         const {accessTokenExpiresAt: firstAT, refreshTokenExpiresAt: firstRT} =
-          await jwtPlus.sign(content, secret);
+          await authomatic.sign(content, secret);
         await sleep(2000);
         const {accessTokenExpiresAt: secondAT, refreshTokenExpiresAt: secondRT} =
-          await jwtPlus.sign(content, secret);
+          await authomatic.sign(content, secret);
         expect(firstAT < secondAT).toBeTruthy();
         expect(firstRT < secondRT).toBeTruthy();
       }

@@ -7,11 +7,21 @@ const t = require('tcomb');
 const {mergeAll, omit} = require('ramda');
 const StandardError = require('standard-error');
 
+/**
+ * The refresh token has expired or was not found
+ * @type {StandardError}
+ * @property {String} [name='RefreshTokenExpiredOrNotFound']
+ */
 const RefreshTokenExpiredOrNotFound =
   new StandardError(
     'The refresh token has expired or was not found',
     {name: 'RefreshTokenExpiredOrNotFound'}
   );
+/**
+ * The access token provided is invalid
+ * @type {StandardError}
+ * @property {String} [name='InvalidAccessToken']
+ */
 const InvalidAccessToken =
   new StandardError('The access token provided is invalid', {name: 'InvalidAccessToken'});
 
@@ -64,6 +74,19 @@ const pld = t.interface({
   userId: UserId
 }, {name: 'Payload', strict: false});
 
+/**
+ * Verify options to be used when verifying tokens
+ * @typedef VerifyOptions
+ * @type {Object}
+ * @property {String|Array|Object} [audience] checks the aud field
+ * @property {String|Array} [issuer] checks the iss field
+ * @property {Boolean} [ignoreExpiration] if true, ignores the expiration check of access tokens
+ * @property {Boolean} [ignoreNotBefore] if true, ignores the not before check of access tokens
+ * @property {String} [subject] checks the sub field
+ * @property {Number|String} [clockTolerance]
+ * @property {String|Number} [maxAge]
+ * @property {Number} [clockTimestamp] overrides the clock for the verification process
+ */
 const VerifyOptions = t.interface({
   audience: t.maybe(t.union([t.String, t.Array, t.Object])),
   issuer: t.maybe(t.union([t.String, t.Array])),
@@ -75,6 +98,16 @@ const VerifyOptions = t.interface({
   clockTimestamp: t.maybe(t.Number)
 }, {name: 'VerifyOptions', strict: true});
 
+/**
+ * The allowed user options to for signing tokens
+ * @typedef UserSignOptions
+ * @type {Object}
+ * @property {Number} [nbf]
+ * @property {String} [aud]
+ * @property {String} [iss]
+ * @property {String} [jti]
+ * @property {String} [sub]
+ */
 const UserSignOptions = t.interface({
   nbf: t.maybe(t.Number),
   aud: t.maybe(t.String),
@@ -92,6 +125,16 @@ const Payload = UserSignOptions.extend(t.interface({
 const _getTTL = rememberMe =>
   rememberMe ? prolongedRefreshTokenLifeInMS : regularRefreshTokenLifeInMS;
 
+/**
+ * Token pairs
+ * @typedef Tokens
+ * @type {Object}
+ * @property {String} accessToken
+ * @property {Number} accessTokenExpiresAt epoch
+ * @property {String} refreshToken
+ * @property {Number} refreshTokenExpiresAt epoch
+ */
+
 const _getTokensObj = (accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt) => ({
   accessToken,
   accessTokenExpiresAt,
@@ -99,15 +142,15 @@ const _getTokensObj = (accessToken, accessTokenExpiresAt, refreshToken, refreshT
   refreshTokenExpiresAt
 });
 
-module.exports = class JWTPlus {
+class Authomatic {
   /**
    * Constructor
    * @param {Object} store
-   * @param {string} [algorithm='HS256] algorithm cannot be 'none'
+   * @param {string} [algorithm=HS256] algorithm cannot be 'none'
    * @param {Number} [expiresIn=60 * 30] expiration time in seconds.
    * @param {Object} [jwt] jsonwebtoken instance, by default it uses require('jsonwebtoken')
-   * @param {Object} [defaultSignInOptions]
-   * @param {Object} [defaultVerifyOptions]
+   * @param {UserSignOptions} [defaultSignInOptions]
+   * @param {VerifyOptions} [defaultVerifyOptions]
    */
   constructor({
     store, algorithm = 'HS256', expiresIn = regularTokenLifeInSeconds, jwt = jsonwebtoken,
@@ -140,10 +183,8 @@ module.exports = class JWTPlus {
    * @param {Object} content token's payload
    * @param secret
    * @param {Boolean} rememberMe if true, the token will last 7 days instead of 1.
-   * @param {Object} [signOptions] Options to be passed to jwt.sign
-   * @returns {Promise<{
-   * token: *, tokenTTL: Number, refreshToken: *, refreshTokenTTL: Number
-   * }>}
+   * @param {UserSignOptions} [signOptions] Options to be passed to jwt.sign
+   * @returns {Promise<Tokens>}
    */
   async sign(content, secret, rememberMe = false, signOptions = {}) {
     const exp = _expiresInToEpoch(this._expiresIn);
@@ -171,8 +212,11 @@ module.exports = class JWTPlus {
    * Verifies token, might throw jwt.verify errors
    * @param {String} token
    * @param secret
-   * @param {Object} [verifyOptions] Options to pass to jwt.verify.
-   * @returns {Promise<*>}
+   * @param {VerifyOptions} [verifyOptions] Options to pass to jwt.verify.
+   * @returns {Promise<String>} decoded token
+   * @throws JsonWebTokenError
+   * @throws TokenExpiredError
+   * Error info at {@link https://www.npmjs.com/package/jsonwebtoken#errors--codes}
    */
   verify(token, secret, verifyOptions = {}) {
     return this._jwt.verify(Token(token), Secret(secret),
@@ -186,8 +230,10 @@ module.exports = class JWTPlus {
    * @param {String} refreshToken
    * @param {String} oldToken
    * @param secret
-   * @param {Object} [signOptions] Options passed to jwt.sign
-   * @returns {Promise<*>}
+   * @param {UserSignOptions} [signOptions] Options passed to jwt.sign
+   * @returns {Promise<Tokens>}
+   * @throws {RefreshTokenExpiredOrNotFound} RefreshTokenExpiredOrNotFound
+   * @throws {InvalidAccessToken} InvalidAccessToken
    */
   async refresh(refreshToken, oldToken, secret, signOptions) {
     RefreshToken(refreshToken);
@@ -221,7 +267,7 @@ module.exports = class JWTPlus {
    * Invalidates refresh token
    * @param {String|Number} userId
    * @param {String} refreshToken
-   * @returns {Promise}
+   * @returns {Promise<Number>} 1 if successful, 0 otherwise.
    */
   invalidateRefreshToken(userId, refreshToken) {
     return this._store.remove(UserId(userId), RefreshToken(refreshToken));
@@ -230,7 +276,9 @@ module.exports = class JWTPlus {
   /**
    * Invalidates all refresh tokens
    * @param {String|Number} userId
-   * @returns {Promise}
+   * @returns {Promise<Number>} 1 if successful, 0 otherwise.
    */
   invalidateAllRefreshTokens(userId) {return this._store.removeAll(UserId(userId));}
-};
+}
+
+module.exports = Authomatic;
