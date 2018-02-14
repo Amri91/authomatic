@@ -1,32 +1,10 @@
 'use strict';
 
+const crypto = require('crypto');
+const util = require('util');
 const jsonwebtoken = require('jsonwebtoken');
-const randToken = require('rand-token');
-const generator = randToken.generator({source: 'crypto'});
 const t = require('tcomb');
-const {mergeAll, omit} = require('ramda');
 const StandardError = require('standard-error');
-
-/**
- * The refresh token has expired or was not found
- * @type {StandardError}
- * @property {String} [name='RefreshTokenExpiredOrNotFound']
- */
-const RefreshTokenExpiredOrNotFound =
-  new StandardError(
-    'The refresh token has expired or was not found',
-    {name: 'RefreshTokenExpiredOrNotFound'}
-  );
-/**
- * The access token provided is invalid
- * @type {StandardError}
- * @property {String} [name='InvalidAccessToken']
- */
-const InvalidAccessToken =
-  new StandardError('The access token provided is invalid', {name: 'InvalidAccessToken'});
-
-// Seconds -> Seconds Since the Epoch
-const _expiresInToEpoch = seconds => Math.floor(Date.now() / 1000) + seconds;
 
 const Store = t.interface({
   // Signature: (userId, refreshToken)
@@ -48,31 +26,59 @@ const JWT = t.interface({
   decode: t.Function,
 }, 'JWT');
 
-// 30 minutes
-const regularTokenLifeInSeconds = 60 * 30;
-// 1 hour
-const tokenLifeUpperLimitInSeconds = 60 * 60;
-// 1 day
-const regularRefreshTokenLifeInMS = 1000 * 60 * 60 * 24;
-// 7 days
-const prolongedRefreshTokenLifeInMS = 1000 * 60 * 60 * 24 * 7;
-
+/**
+ * @type {String}
+ * @typedef Secret
+ * @description a string greater than 20 characters
+ */
 const Secret = secret => {
   t.String(secret);
   t.assert(secret.length >= 20, 'The secret must be greater than or equal 20 characters');
   return secret;
 };
-const ExpiresIn = t.refinement(t.Integer, e => e <= tokenLifeUpperLimitInSeconds, 'ExpiresIn');
+
 const ExpiresAt = t.Integer;
 const Algorithm = t.enums.of(['HS256', 'HS384', 'HS512', 'RS256'], 'Algorithm');
 const UserId = t.Any;
 const RefreshToken = t.String;
 const Token = t.String;
-const RememberMe = t.Boolean;
+const Prolong = t.Boolean;
 
-const pld = t.interface({
-  userId: UserId
-}, {name: 'Payload', strict: false});
+/**
+ * Access token
+ * @typedef AccessToken
+ * @type {String}
+ * @description Regular JWT token.
+ * Its payload looks like this:
+ ```js
+{
+  "uid": "userId",
+  "exp": "someNumber",
+  "jti": "randomBytes",
+  ...otherClaims,
+  "pld": {
+    ...otherUserContent
+  }
+}
+ ```
+ */
+
+/**
+ * Refresh token
+ * @typedef RefreshToken
+ * @type {String}
+ * @description A base64 encoded string.
+ */
+
+/**
+ * Token pairs
+ * @typedef Tokens
+ * @type {Object}
+ * @property {AccessToken} accessToken
+ * @property {Number} accessTokenExpiresAt epoch
+ * @property {RefreshToken} refreshToken
+ * @property {Number} refreshTokenExpiresAt epoch
+ */
 
 /**
  * Verify options to be used when verifying tokens
@@ -100,185 +106,206 @@ const VerifyOptions = t.interface({
 
 /**
  * The allowed user options to for signing tokens
- * @typedef UserSignOptions
+ * @typedef SignOptions
  * @type {Object}
  * @property {Number} [nbf]
  * @property {String} [aud]
  * @property {String} [iss]
- * @property {String} [jti]
  * @property {String} [sub]
  */
-const UserSignOptions = t.interface({
+const SignOptions = t.interface({
   nbf: t.maybe(t.Number),
   aud: t.maybe(t.String),
   iss: t.maybe(t.String),
-  jti: t.maybe(t.String),
   sub: t.maybe(t.String),
-}, {name: 'UserSignOption', strict: true});
+}, {name: 'SignOptions', strict: true});
 
-const Payload = UserSignOptions.extend(t.interface({
-  pld: pld,
+const Payload = SignOptions.extend(t.interface({
+  uid: UserId,
+  pld: t.Any,
   exp: ExpiresAt,
   rme: t.Boolean
 }, {name: 'Payload', strict: true}));
 
-const _getTTL = rememberMe =>
-  rememberMe ? prolongedRefreshTokenLifeInMS : regularRefreshTokenLifeInMS;
+/**
+ * The refresh token has expired or was not found
+ * @type {StandardError}
+ * @typedef RefreshTokenExpiredOrNotFound
+ * @property {String} [name='RefreshTokenExpiredOrNotFound']
+ */
+const refreshTokenExpiredOrNotFound = new StandardError(
+  'The refresh token has expired or was not found',
+  {name: 'RefreshTokenExpiredOrNotFound'}
+);
 
 /**
- * Token pairs
- * @typedef Tokens
- * @type {Object}
- * @property {String} accessToken
- * @property {Number} accessTokenExpiresAt epoch
- * @property {String} refreshToken
- * @property {Number} refreshTokenExpiresAt epoch
+ * The access token provided is invalid
+ * @type {StandardError}
+ * @typedef InvalidAccessToken
+ * @property {String} [name='InvalidAccessToken']
  */
+const invalidAccessToken = new StandardError(
+  'The access token provided is invalid',
+  {name: 'InvalidAccessToken'}
+);
 
-const _getTokensObj = (accessToken, accessTokenExpiresAt, refreshToken, refreshTokenExpiresAt) => ({
-  accessToken,
-  accessTokenExpiresAt,
-  refreshToken,
-  refreshTokenExpiresAt
-});
+// 15 minutes
+const regularAccessTTL = 60 * 15;
+// 1 hour
+const prolongedAccessTTL = 60 * 60;
+// 25 minutes
+const regularRefreshTTL = 60 * 25;
+// 7 days
+const prolongedRefreshTTL = 60 * 60 * 24 * 7;
 
-class Authomatic {
-  /**
-   * Constructor
-   * @param {Object} store
-   * @param {string} [algorithm=HS256] algorithm cannot be 'none'
-   * @param {Number} [expiresIn=60 * 30] expiration time in seconds.
-   * @param {Object} [jwt] jsonwebtoken instance, by default it uses require('jsonwebtoken')
-   * @param {UserSignOptions} [defaultSignInOptions]
-   * @param {VerifyOptions} [defaultVerifyOptions]
-   */
-  constructor({
-    store, algorithm = 'HS256', expiresIn = regularTokenLifeInSeconds, jwt = jsonwebtoken,
-    defaultSignInOptions = {}, defaultVerifyOptions = {}
-  }) {
-    this._store = Store(store);
-    this._defaultSignInOptions = UserSignOptions(defaultSignInOptions);
-    this._defaultVerifyOptions = VerifyOptions(defaultVerifyOptions);
-    this._algorithm = Algorithm(algorithm);
-    this._expiresIn = ExpiresIn(expiresIn);
-    this._jwt = JWT(jwt);
-  }
+// Seconds -> Seconds Since the Epoch
+const computeExpiryDate = seconds => Math.floor(Date.now() / 1000) + seconds;
 
-  /**
-   * @private
-   * A private function that creates a refresh token
-   * @param {String|Number} userId
-   * @param {String} accessToken
-   * @param {Number} ttl time to live in milliseconds
-   * @returns {Promise}
-   */
-  async _createRefreshToken(userId, accessToken, ttl) {
-    const refreshToken = generator.generate(256);
-    await this._store.registerTokens(userId, refreshToken, accessToken, ttl);
-    return refreshToken;
-  }
+const randomBytes = util.promisify(crypto.randomBytes);
+
+const generateTokenId = () => randomBytes(32).then(x => x.toString('base64'));
+
+const generateRefreshToken = async userId =>
+  Buffer.concat([await randomBytes(128), new Buffer(userId, 'utf8')]).toString('base64');
+
+const getUserId = refreshToken => {
+  const buf = new Buffer(refreshToken, 'base64');
+  return buf.slice(128).toString('utf8');
+};
+
+/**
+ * Authomatic
+ * @param {Object} store one of authomatic stores
+ * @param {String} [algorithm=HS256] Can be one of these ['HS256', 'HS384', 'HS512', 'RS256']
+ * @param {SignOptions} [defaultSignOptions]
+ * @param {VerifyOptions} [defaultVerifyOptions]
+ */
+module.exports = function Authomatic({
+  store, algorithm = 'HS256',
+  jwt = jsonwebtoken, defaultSignOptions = {}, defaultVerifyOptions = {}
+}) {
+
+  Store(store);
+  Algorithm(algorithm);
+  JWT(jwt);
+  SignOptions(defaultSignOptions);
+  VerifyOptions(defaultVerifyOptions);
 
   /**
    * Returns access and refresh tokens
-   * @param {Object} content token's payload
-   * @param secret
-   * @param {Boolean} rememberMe if true, the token will last 7 days instead of 1.
-   * @param {UserSignOptions} [signOptions] Options to be passed to jwt.sign
+   * @param {String} userId
+   * @param {Secret} secret
+   * @param {Object} [content] user defined properties
+   * @param {Boolean} [prolong] if true, the refreshToken will last 4 days and accessToken 1 hour,
+   * otherwise the refresh token will last 25 minutes and the accessToken 15 minutes.
+   * @param {SignOptions} [signOptions] Options to be passed to jwt.sign
    * @returns {Promise<Tokens>}
    */
-  async sign(content, secret, rememberMe = false, signOptions = {}) {
-    const exp = _expiresInToEpoch(this._expiresIn);
-    RememberMe(rememberMe);
-    const token = this._jwt.sign(
-      // Payload
-      Payload({pld: content,
-        ...mergeAll([
-          this._defaultSignInOptions, UserSignOptions(signOptions),
-          {exp, rme: rememberMe}
-        ])}),
-      // Secret
-      Secret(secret),
-      // Options
-      {algorithm: this._algorithm});
-    const ttl = _getTTL(rememberMe);
-    return _getTokensObj(token,
-      exp,
-      await this._createRefreshToken(content.userId, token, ttl),
-      _expiresInToEpoch(ttl / 1000)
-    );
-  }
+  const sign = async (userId, secret, content = {}, prolong = false, signOptions = {}) => {
+    UserId(userId);
+    Prolong(prolong);
+
+    const accessExp = computeExpiryDate(prolong ? prolongedAccessTTL : regularAccessTTL);
+    const refreshTTL = prolong ? prolongedRefreshTTL : regularRefreshTTL;
+    // Order of spreading is important!
+    const payload = Payload({
+      ...defaultSignOptions,
+      ...SignOptions(signOptions),
+      pld: content,
+      uid: userId,
+      exp: accessExp,
+      rme: prolong,
+      jti: await generateTokenId()
+    });
+
+    const refreshToken = await generateRefreshToken(userId);
+    const accessToken = jwt.sign(payload, Secret(secret), {algorithm});
+
+    await store.registerTokens(userId, refreshToken, accessToken, refreshTTL * 1000);
+
+    return {
+      accessToken,
+      accessTokenExpiresAt: accessExp,
+      refreshToken,
+      refreshTokenExpiresAt: computeExpiryDate(refreshTTL)
+    };
+
+  };
 
   /**
    * Verifies token, might throw jwt.verify errors
    * @param {String} token
-   * @param secret
+   * @param {Secret} secret
    * @param {VerifyOptions} [verifyOptions] Options to pass to jwt.verify.
    * @returns {Promise<String>} decoded token
    * @throws JsonWebTokenError
    * @throws TokenExpiredError
    * Error info at {@link https://www.npmjs.com/package/jsonwebtoken#errors--codes}
    */
-  verify(token, secret, verifyOptions = {}) {
-    return this._jwt.verify(Token(token), Secret(secret),
-      mergeAll([this._defaultVerifyOptions, VerifyOptions(verifyOptions),
-        {algorithm: this._algorithm}]));
-  }
+  const verify = (token, secret, verifyOptions = {}) =>
+    jwt.verify(Token(token), Secret(secret), {
+      ...defaultVerifyOptions,
+      ...VerifyOptions(verifyOptions),
+      algorithm: algorithm
+    });
 
   /**
    * Issues a new access token using a refresh token and an old token.
    * There is no need to verify the old token provided because this method uses the stored one.
    * @param {String} refreshToken
-   * @param {String} oldToken
-   * @param secret
-   * @param {UserSignOptions} [signOptions] Options passed to jwt.sign
+   * @param {String} accessToken
+   * @param {Secret} secret
+   * @param {SignOptions} [signOptions] Options passed to jwt.sign
    * @returns {Promise<Tokens>}
-   * @throws {RefreshTokenExpiredOrNotFound} RefreshTokenExpiredOrNotFound
-   * @throws {InvalidAccessToken} InvalidAccessToken
+   * @throws {RefreshTokenExpiredOrNotFound} refreshTokenExpiredOrNotFound
+   * @throws {InvalidAccessToken} invalidAccessToken
    */
-  async refresh(refreshToken, oldToken, secret, signOptions) {
+  const refresh = async (refreshToken, accessToken, secret) => {
     RefreshToken(refreshToken);
-    Token(oldToken);
-    const untrustedPayload = Payload(this._jwt.decode(oldToken));
-    const trustedToken =
-      await this._store.getAccessToken(untrustedPayload.pld.userId, refreshToken);
+    Token(accessToken);
+
+    const userId = getUserId(refreshToken);
+    const storedToken = await store.getAccessToken(userId, refreshToken);
+
     // Remove the refresh token even if the following operations were not successful.
     // RefreshTokens are one time use only
-    if(!await this._store.remove(untrustedPayload.pld.userId, refreshToken)) {
-      throw RefreshTokenExpiredOrNotFound;
+    if(!await store.remove(userId, refreshToken)) {
+      throw refreshTokenExpiredOrNotFound;
     }
+
     // RefreshTokens works with only one AccessToken
-    if (trustedToken !== oldToken) {throw InvalidAccessToken;}
+    if (storedToken !== accessToken) {throw invalidAccessToken;}
 
     // Token is safe since it is stored by us
-    const {pld: payload, rme: rememberMe, ...jwtOptions} =
-      this._jwt.decode(trustedToken);
+    // eslint-disable-next-line no-unused-vars
+    const {exp, iat, jti, uid, pld: payload, rme: prolong, ...jwtOptions} = jwt.decode(storedToken);
 
     // Finally, sign new tokens for the user
-    return this.sign(
-      payload,
-      Secret(secret),
-      rememberMe,
-      // Ignoring exp
-      UserSignOptions({...omit(['exp', 'iat'], jwtOptions), ...signOptions})
-    );
-  }
+    return sign(uid, Secret(secret), payload, prolong, jwtOptions);
+  };
 
   /**
    * Invalidates refresh token
-   * @param {String|Number} userId
    * @param {String} refreshToken
-   * @returns {Promise<Number>} 1 if successful, 0 otherwise.
+   * @returns {Promise<Boolean>} true if successful, false otherwise.
    */
-  invalidateRefreshToken(userId, refreshToken) {
-    return this._store.remove(UserId(userId), RefreshToken(refreshToken));
-  }
+  const invalidateRefreshToken = refreshToken => {
+    RefreshToken(refreshToken);
+    return store.remove(getUserId(refreshToken), refreshToken);
+  };
 
   /**
    * Invalidates all refresh tokens
    * @param {String|Number} userId
-   * @returns {Promise<Number>} 1 if successful, 0 otherwise.
+   * @returns {Promise<Boolean>} true if successful, false otherwise.
    */
-  invalidateAllRefreshTokens(userId) {return this._store.removeAll(UserId(userId));}
-}
+  const invalidateAllRefreshTokens = userId => store.removeAll(UserId(userId));
 
-module.exports = Authomatic;
+  return {
+    sign,
+    verify,
+    refresh,
+    invalidateRefreshToken,
+    invalidateAllRefreshTokens
+  };
+};
