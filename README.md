@@ -36,7 +36,28 @@ const authomatic = new Authomatic({store});
 npm test
 ```
 
-## Documentation
+# Documentation
+
+## Members
+
+<dl>
+<dt><a href="#sign">sign</a> ⇒ <code><a href="#Tokens">Promise.&lt;Tokens&gt;</a></code></dt>
+<dd><p>Returns access and refresh tokens</p>
+</dd>
+<dt><a href="#verify">verify</a> ⇒ <code>String</code></dt>
+<dd><p>Verifies token, might throw jwt.verify errors</p>
+</dd>
+<dt><a href="#refresh">refresh</a> ⇒ <code><a href="#Tokens">Promise.&lt;Tokens&gt;</a></code></dt>
+<dd><p>Issues a new access token using a refresh token and an old token.
+There is no need to verify the old token provided because this method uses the stored one.</p>
+</dd>
+<dt><a href="#invalidateRefreshToken">invalidateRefreshToken</a> ⇒ <code>Promise.&lt;Boolean&gt;</code></dt>
+<dd><p>Invalidates refresh token</p>
+</dd>
+<dt><a href="#invalidateAllRefreshTokens">invalidateAllRefreshTokens</a> ⇒ <code>Promise.&lt;Boolean&gt;</code></dt>
+<dd><p>Invalidates all refresh tokens</p>
+</dd>
+</dl>
 
 ## Typedefs
 
@@ -77,6 +98,85 @@ Its payload looks like this:</p>
 <dd><p>The access token provided is invalid</p>
 </dd>
 </dl>
+
+<a name="sign"></a>
+
+## sign ⇒ [<code>Promise.&lt;Tokens&gt;</code>](#Tokens)
+Returns access and refresh tokens
+
+**Kind**: global variable  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| userId | <code>String</code> |  |
+| secret | [<code>Secret</code>](#Secret) |  |
+| [content] | <code>Object</code> | user defined properties |
+| [prolong] | <code>Boolean</code> | if true, the refreshToken will last 4 days and accessToken 1 hour, otherwise the refresh token will last 25 minutes and the accessToken 15 minutes. |
+| [signOptions] | [<code>SignOptions</code>](#SignOptions) | Options to be passed to jwt.sign |
+
+<a name="verify"></a>
+
+## verify ⇒ <code>String</code>
+Verifies token, might throw jwt.verify errors
+
+**Kind**: global variable  
+**Returns**: <code>String</code> - decoded token  
+**Throws**:
+
+- JsonWebTokenError
+- TokenExpiredError
+Error info at [https://www.npmjs.com/package/jsonwebtoken#errors--codes](https://www.npmjs.com/package/jsonwebtoken#errors--codes)
+
+
+| Param | Type | Description |
+| --- | --- | --- |
+| token | <code>String</code> |  |
+| secret | [<code>Secret</code>](#Secret) |  |
+| [verifyOptions] | [<code>VerifyOptions</code>](#VerifyOptions) | Options to pass to jwt.verify. |
+
+<a name="refresh"></a>
+
+## refresh ⇒ [<code>Promise.&lt;Tokens&gt;</code>](#Tokens)
+Issues a new access token using a refresh token and an old token.
+There is no need to verify the old token provided because this method uses the stored one.
+
+**Kind**: global variable  
+**Throws**:
+
+- [<code>RefreshTokenExpiredOrNotFound</code>](#RefreshTokenExpiredOrNotFound) refreshTokenExpiredOrNotFound
+- [<code>InvalidAccessToken</code>](#InvalidAccessToken) invalidAccessToken
+
+
+| Param | Type | Description |
+| --- | --- | --- |
+| refreshToken | <code>String</code> |  |
+| accessToken | <code>String</code> |  |
+| secret | [<code>Secret</code>](#Secret) |  |
+| [signOptions] | [<code>SignOptions</code>](#SignOptions) | Options passed to jwt.sign |
+
+<a name="invalidateRefreshToken"></a>
+
+## invalidateRefreshToken ⇒ <code>Promise.&lt;Boolean&gt;</code>
+Invalidates refresh token
+
+**Kind**: global variable  
+**Returns**: <code>Promise.&lt;Boolean&gt;</code> - true if successful, false otherwise.  
+
+| Param | Type |
+| --- | --- |
+| refreshToken | <code>String</code> | 
+
+<a name="invalidateAllRefreshTokens"></a>
+
+## invalidateAllRefreshTokens ⇒ <code>Promise.&lt;Boolean&gt;</code>
+Invalidates all refresh tokens
+
+**Kind**: global variable  
+**Returns**: <code>Promise.&lt;Boolean&gt;</code> - true if successful, false otherwise.  
+
+| Param | Type |
+| --- | --- |
+| userId | <code>String</code> \| <code>Number</code> | 
 
 <a name="Secret"></a>
 
@@ -181,3 +281,53 @@ The access token provided is invalid
 | --- | --- | --- |
 | [name] | <code>String</code> | <code>&#x27;InvalidAccessToken&#x27;</code> | 
 
+
+# Creating a store
+If you want to create a new store you need to expose the following functions:
+
+1- registerTokens
+
+```js
+/**
+* Register access token and refresh token for a user
+* @param {String} userId
+* @param {String} refreshToken
+* @param {String} accessToken
+* @param {Number} ttl time to live in ms
+* @returns {Promise<Boolean>} returns true when created.
+*/
+function registerTokens(userId, refreshToken, accessToken, ttl){...}
+```
+
+2- getAccessToken
+```js
+/**
+* Returns the user's token using the userId and the refresh token
+* @param userId
+* @param refreshToken
+* @returns {Promise<String>} the access token if found or null
+*/
+function getAccessToken(userId, refreshToken) {...}
+```
+
+3- remove
+```js
+/**
+* Remove a single refresh token from the user
+* @param userId
+* @param refreshToken
+* @returns {Promise<Boolean>} true if found and deleted, otherwise false.
+*/
+function remove(userId, refreshToken) {...}
+```
+
+4- removeAll
+```js
+/**
+* Removes all tokens for a particular user
+* @param userId
+* @returns {Promise<Boolean>} true if any were found and delete, false otherwise
+*/
+function remove(userId, refreshToken) {...}
+```
+You may need to expose a reference to the store if the user may need to handle connections during testing for example.

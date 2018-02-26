@@ -36,6 +36,56 @@ const authomatic = new Authomatic({store});
 npm test
 ```
 
-## Documentation
+# Documentation
 
 {{>main}}
+
+# Creating a store
+If you want to create a new store you need to expose the following functions:
+
+1- registerTokens
+
+```js
+/**
+* Register access token and refresh token for a user
+* @param {String} userId
+* @param {String} refreshToken
+* @param {String} accessToken
+* @param {Number} ttl time to live in ms
+* @returns {Promise<Boolean>} returns true when created.
+*/
+function registerTokens(userId, refreshToken, accessToken, ttl){...}
+```
+
+2- getAccessToken
+```js
+/**
+* Returns the user's token using the userId and the refresh token
+* @param userId
+* @param refreshToken
+* @returns {Promise<String>} the access token if found or null
+*/
+function getAccessToken(userId, refreshToken) {...}
+```
+
+3- remove
+```js
+/**
+* Remove a single refresh token from the user
+* @param userId
+* @param refreshToken
+* @returns {Promise<Boolean>} true if found and deleted, otherwise false.
+*/
+function remove(userId, refreshToken) {...}
+```
+
+4- removeAll
+```js
+/**
+* Removes all tokens for a particular user
+* @param userId
+* @returns {Promise<Boolean>} true if any were found and delete, false otherwise
+*/
+function remove(userId, refreshToken) {...}
+```
+You may need to expose a reference to the store if the user may need to handle connections during testing for example.
