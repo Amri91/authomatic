@@ -191,16 +191,6 @@ module.exports = function Authomatic({
   SignOptions(defaultSignOptions);
   VerifyOptions(defaultVerifyOptions);
 
-  /**
-   * Returns access and refresh tokens
-   * @param {String} userId
-   * @param {Secret} secret
-   * @param {Object} [content] user defined properties
-   * @param {Boolean} [prolong] if true, the refreshToken will last 4 days and accessToken 1 hour,
-   * otherwise the refresh token will last 25 minutes and the accessToken 15 minutes.
-   * @param {SignOptions} [signOptions] Options to be passed to jwt.sign
-   * @returns {Promise<Tokens>}
-   */
   const sign = async (userId, secret, content = {}, prolong = false, signOptions = {}) => {
     UserId(userId);
     Prolong(prolong);
@@ -232,16 +222,6 @@ module.exports = function Authomatic({
 
   };
 
-  /**
-   * Verifies token, might throw jwt.verify errors
-   * @param {String} token
-   * @param {Secret} secret
-   * @param {VerifyOptions} [verifyOptions] Options to pass to jwt.verify.
-   * @returns {Promise<String>} decoded token
-   * @throws JsonWebTokenError
-   * @throws TokenExpiredError
-   * Error info at {@link https://www.npmjs.com/package/jsonwebtoken#errors--codes}
-   */
   const verify = (token, secret, verifyOptions = {}) =>
     jwt.verify(Token(token), Secret(secret), {
       ...defaultVerifyOptions,
@@ -249,17 +229,6 @@ module.exports = function Authomatic({
       algorithm: algorithm
     });
 
-  /**
-   * Issues a new access token using a refresh token and an old token.
-   * There is no need to verify the old token provided because this method uses the stored one.
-   * @param {String} refreshToken
-   * @param {String} accessToken
-   * @param {Secret} secret
-   * @param {SignOptions} [signOptions] Options passed to jwt.sign
-   * @returns {Promise<Tokens>}
-   * @throws {RefreshTokenExpiredOrNotFound} refreshTokenExpiredOrNotFound
-   * @throws {InvalidAccessToken} invalidAccessToken
-   */
   const refresh = async (refreshToken, accessToken, secret) => {
     RefreshToken(refreshToken);
     Token(accessToken);
@@ -284,28 +253,59 @@ module.exports = function Authomatic({
     return sign(uid, Secret(secret), payload, prolong, jwtOptions);
   };
 
-  /**
-   * Invalidates refresh token
-   * @param {String} refreshToken
-   * @returns {Promise<Boolean>} true if successful, false otherwise.
-   */
   const invalidateRefreshToken = refreshToken => {
     RefreshToken(refreshToken);
     return store.remove(getUserId(refreshToken), refreshToken);
   };
 
-  /**
-   * Invalidates all refresh tokens
-   * @param {String|Number} userId
-   * @returns {Promise<Boolean>} true if successful, false otherwise.
-   */
   const invalidateAllRefreshTokens = userId => store.removeAll(UserId(userId));
 
   return {
+    /**
+     * Returns access and refresh tokens
+     * @param {String} userId
+     * @param {Secret} secret
+     * @param {Object} [content] user defined properties
+     * @param {Boolean} [prolong] if true, the refreshToken will last 4 days and accessToken 1 hour,
+     * otherwise the refresh token will last 25 minutes and the accessToken 15 minutes.
+     * @param {SignOptions} [signOptions] Options to be passed to jwt.sign
+     * @returns {Promise<Tokens>}
+     */
     sign,
+    /**
+     * Verifies token, might throw jwt.verify errors
+     * @param {String} token
+     * @param {Secret} secret
+     * @param {VerifyOptions} [verifyOptions] Options to pass to jwt.verify.
+     * @returns {String} decoded token
+     * @throws JsonWebTokenError
+     * @throws TokenExpiredError
+     * Error info at {@link https://www.npmjs.com/package/jsonwebtoken#errors--codes}
+     */
     verify,
+    /**
+     * Issues a new access token using a refresh token and an old token.
+     * There is no need to verify the old token provided because this method uses the stored one.
+     * @param {String} refreshToken
+     * @param {String} accessToken
+     * @param {Secret} secret
+     * @param {SignOptions} [signOptions] Options passed to jwt.sign
+     * @returns {Promise<Tokens>}
+     * @throws {RefreshTokenExpiredOrNotFound} refreshTokenExpiredOrNotFound
+     * @throws {InvalidAccessToken} invalidAccessToken
+     */
     refresh,
+    /**
+     * Invalidates refresh token
+     * @param {String} refreshToken
+     * @returns {Promise<Boolean>} true if successful, false otherwise.
+     */
     invalidateRefreshToken,
+    /**
+     * Invalidates all refresh tokens
+     * @param {String|Number} userId
+     * @returns {Promise<Boolean>} true if successful, false otherwise.
+     */
     invalidateAllRefreshTokens
   };
 };
