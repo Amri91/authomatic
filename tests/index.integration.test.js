@@ -1,130 +1,117 @@
 'use strict';
 
-const util = require('util');
-const request = require('supertest');
-const crypto = require('crypto');
-const secret = 'thisIsAVeryBadSecret';
+const jwt = require('jsonwebtoken');
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const Authomatic = require('../index');
+const testUtilities = require('./testUtilities');
 
-const {app, authomatic, store} = require('../examples/koa');
+const algorithm = 'HS256';
 
-const randomBytes = util.promisify(crypto.randomBytes);
+const userId = '123';
+const secret = 'asdfasdfasdfasdf1234';
+const computeExpiryDate = seconds => Math.floor(Date.now() / 1000) + seconds;
 
-const getToken = () => authomatic.sign('111', secret);
+const createFakeAccessToken = (jti, exp, alg) =>
+  jwt.sign(
+    {
+      pld: {}, uid: userId, jti: jti || 'atJTI',
+      exp: exp || computeExpiryDate(10), t: 'Authomatic-AT'
+    },
+    secret, {algorithm: alg || algorithm}
+  );
 
-describe('Authomatic', () => {
-  let staticRefreshToken;
+const createFakeRefreshToken = (jti, atJTI, exp) =>
+  jwt.sign(
+    {
+      aud: ['Authomatic'], iss: 'Authomatic',
+      uid: userId, jti: jti || 'rtJTI', accessTokenJTI: atJTI || 'atJTI',
+      exp: exp || computeExpiryDate(100), t: 'Authomatic-RT'
+    },
+    secret, {algorithm}
+  );
 
-  beforeAll(async () => {
-    staticRefreshToken = Buffer.concat([
-      await randomBytes(128), new Buffer('123', 'utf8')
-    ]).toString('base64');
-  });
+const accessToken = createFakeAccessToken();
+const refreshToken = createFakeRefreshToken();
 
-  beforeEach(done => {
-    store.client.flushall(err => {
-      done(err);
-    });
-  });
+describe('authomatic', () => {
+  let authomatic, fakeStore;
 
-  afterAll(done => {
-    store.client.quit(err => {
-      done(err);
-    });
-  });
-
-  describe('#revokeRefreshToken', () => {
-    it('should return 404 if refresh token is not found', async () => {
-      await request(app.callback())
-      .delete(`/tokens/refreshTokens/${staticRefreshToken}`)
-      .expect(404);
-    });
-    it('should revoke the refreshToken if found', async () => {
-      const {refreshToken} = await getToken();
-      await request(app.callback())
-      .delete(`/tokens/refreshTokens/${encodeURIComponent(refreshToken)}`)
-      .expect(204);
-      await request(app.callback())
-      .delete(`/tokens/refreshTokens/${encodeURIComponent(refreshToken)}`)
-      .expect(404);
-    });
-  });
-
-  describe('#login', () => {
-    it('should return token pairs when logging in', async () => {
-      const {body} = await request(app.callback())
-      .post(`/tokens/login`)
-      .send({rememberMe: false})
-      .expect(201);
-      expect(body.accessToken && body.refreshToken).toBeTruthy();
-    });
+  beforeEach(() => {
+    fakeStore = testUtilities.fakeStore;
+    authomatic = Authomatic({store: fakeStore, algorithm, jwt});
   });
 
   describe('#verify', () => {
-    it('should not allow unauthenticated users to access private routes', async () => {
-      await request(app.callback())
-      .delete(`/tokens/refreshTokens`)
-      .set('Authorization', 'Bearer 123')
-      .send({userId: '123'})
-      .expect(401);
+    it('Should verify and decode tokens', async () => {
+      const exp = computeExpiryDate(10);
+      expect(await authomatic.verify(createFakeAccessToken('jti', exp), secret))
+      .toEqual({
+        pld: {}, uid: userId, jti: 'jti',
+        exp, iat: exp - 10, t: 'Authomatic-AT'
+      });
     });
-    it('should not allow users without accessTokens', async () => {
-      await request(app.callback())
-      .delete(`/tokens/refreshTokens`)
-      .send({userId: '123'})
-      .expect(400);
+    it('Should fail if the algorithm mismatch', async () => {
+      expect.assertions(1);
+      try {
+        await authomatic.verify(createFakeAccessToken(null, null, 'RS256'), secret);
+      } catch (e) {
+        expect(e).toBeTruthy();
+      }
     });
-  });
-
-  describe('#revokeAllTokens', () => {
-    it('should revokeAllTokens for the provided userId', async () => {
-      const {accessToken} = await getToken();
-      await request(app.callback())
-      .delete(`/tokens/refreshTokens`)
-      .set('Authorization', `Bearer ${accessToken}`)
-      .send({userId: '111'})
-      .expect(204);
-
-      await request(app.callback())
-      .delete(`/tokens/refreshTokens`)
-      .set('Authorization', `Bearer ${accessToken}`)
-      .send({userId: '111'})
-      .expect(404);
+    it('Should fail when trying to verify refresh tokens instead of access tokens', async () => {
+      expect.assertions(1);
+      try {
+        await authomatic.verify(createFakeRefreshToken(), secret);
+      } catch (e) {
+        expect(e.name).toBe('InvalidToken');
+      }
     });
   });
-
   describe('#refresh', () => {
-    it('should generate a new pair of tokens and remove the old refresh token', async () => {
-      const {accessToken, refreshToken} = await getToken();
-      await request(app.callback())
-      .post(`/tokens/refresh`)
-      .send({accessToken, refreshToken})
-      .expect(200);
-
-      await request(app.callback())
-      .post(`/tokens/refresh`)
-      .send({accessToken, refreshToken})
-      .expect(400);
+    it('Should return a new pair of valid tokens', async () => {
+      const results =
+        await authomatic.refresh(refreshToken, accessToken, secret, {});
+      expect(authomatic.verify(results.accessToken, secret)).toBeTruthy();
+      expect(
+        authomatic.refresh(results.refreshToken, results.accessToken, secret, {})
+      ).toBeTruthy();
     });
-
-    it('should generate handle bad refresh tokens', async () => {
-      const {accessToken} = await getToken();
-      await request(app.callback())
-      .post(`/tokens/refresh`)
-      .send({accessToken, refreshToken: ''})
-      .expect(400);
+    it('Should not refresh mismatching tokens', async () => {
+      expect.assertions(1);
+      const mismatchingAccessToken =
+        jwt.sign(
+          {pld: {}, uid: userId, jti: 'mismatchingJTI', t: 'Authomatic-AT'}, secret, {algorithm}
+        );
+      try {
+        await authomatic.refresh(refreshToken, mismatchingAccessToken, secret, {});
+      } catch(e) {
+        expect(e.name).toBe('TokensMismatch');
+      }
     });
-
-    it('should not allow mismatching token pairs', async () => {
-      const {accessToken: oldToken, refreshToken} = await getToken();
-      await sleep(2000);
-      const {accessToken} = await getToken();
-      expect(oldToken !== accessToken).toBeTruthy();
-      await request(app.callback())
-      .post(`/tokens/refresh`)
-      .send({accessToken, refreshToken})
-      .expect(400);
+    it('Should throw an error if the refresh token expired', async () => {
+      expect.assertions(1);
+      try {
+        await authomatic.refresh(
+          createFakeRefreshToken(0, 0, computeExpiryDate(-10)), null, secret, {}
+        );
+      } catch(e) {
+        expect(e.name).toBe('TokenExpiredError');
+      }
+    });
+    it('Should throw an error if refresh token and access tokens were swaped', async () => {
+      expect.assertions(1);
+      try {
+        await authomatic.refresh(createFakeAccessToken(), createFakeRefreshToken(), secret, {}
+        );
+      } catch(e) {
+        expect(e.name).toBe('InvalidToken');
+      }
+    });
+    it('Should accept expired access tokens', async () => {
+      expect(await authomatic.refresh(
+        createFakeRefreshToken(0, 0, computeExpiryDate()),
+        createFakeAccessToken(0, computeExpiryDate(-10)), secret, {}
+      )).toBeTruthy();
     });
   });
 });

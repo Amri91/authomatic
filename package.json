@@ -1,7 +1,7 @@
 {
   "name": "authomatic",
   "version": "0.0.1",
-  "description": "An opinionated JWT library with sensible defaults that implements the complete token flow.",
+  "description": "An authentication library that uses JWT for access and refresh tokens with sensible defaults.",
   "main": "index.js",
   "scripts": {
     "test": "npm run test:lint && npm run test:coverage",
@@ -16,12 +16,13 @@
   "author": "Abdulrahman Amri",
   "license": "MIT",
   "dependencies": {
-    "jsonwebtoken": "latest",
+    "jsonwebtoken": "^8.3.0",
     "standard-error": "^1.1.0",
     "tcomb": "^3.2.24"
   },
   "devDependencies": {
-    "authomatic-redis": "0.0.3",
+    "authomatic-redis": "^1.0.0",
+    "coveralls": "^3.0.1",
     "eslint": "^4.17.0",
     "eslint-config-warp": "^3.0.0",
     "jest": "^23.1.0",

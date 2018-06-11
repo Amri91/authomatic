@@ -1,52 +1,33 @@
 'use strict';
 
-const util = require('util');
-const crypto = require('crypto');
 const {omit, merge} = require('ramda');
+
+const testUtilities = require('./testUtilities');
 
 const Authomatic = require('../index');
 
 const customAlgorithm = 'HS256';
 
-const acceptableVerifyOptions = {
-  algorithm: customAlgorithm
-};
-
 const acceptableSignOptions = {
   algorithm: customAlgorithm
 };
-
-const randomBytes = util.promisify(crypto.randomBytes);
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 describe('authomatic', () => {
   let authomatic, fakeStore, fakeJWT;
-  const userId = '123', token = '789', secret = 'asdfasdfasdfasdf1234';
-
-  let refreshToken;
-
-  beforeAll(async () => {
-    refreshToken = Buffer.concat([
-      await randomBytes(128), new Buffer('123', 'utf8')
-    ]).toString('base64');
-  });
+  const userId = '123', secret = 'asdfasdfasdfasdf1234', refreshToken = {
+    aud: ['Authomatic'], iss: 'Authomatic',
+    uid: userId, jti: 'rtJTI', accessTokenJTI: 'atJTI',
+    exp: 123, t: 'Authomatic-RT'
+  };
 
   beforeEach(() => {
-    fakeStore = {
-      // Signature: (userId, refreshToken)
-      remove: jest.fn(() => true),
-      // Signature: (userId)
-      removeAll: jest.fn(() => true),
-      // Signature: (userId, refreshToken)
-      getAccessToken: jest.fn(() => token),
-      // Signature: (userId, refreshToken, accessToken, ttl)
-      registerTokens: jest.fn(() => true),
-    };
+    fakeStore = testUtilities.fakeStore;
     fakeJWT = {
-      verify: jest.fn(token => token),
-      sign: jest.fn(() => 'I am a token'),
-      decode: jest.fn(() => ({uid: 123, exp: 123, rme: true, pld: {}}))
+      verify: jest.fn(t => t),
+      sign: jest.fn(t => t),
+      decode: jest.fn(t => t)
     };
     authomatic = Authomatic({store: fakeStore, algorithm: customAlgorithm, jwt: fakeJWT});
   });
@@ -64,18 +45,15 @@ describe('authomatic', () => {
     });
   });
   describe('#invalidateRefreshToken', () => {
-    it('should instruct the store to remove the refresh token', () => {
-      authomatic.invalidateRefreshToken(refreshToken);
-      expect(fakeStore.remove.mock.calls[0][0]).toBe(userId);
-      expect(fakeStore.remove.mock.calls[0][1]).toBe(refreshToken);
-    });
     it('Should be true on success', () => {
-      expect(authomatic.invalidateRefreshToken(refreshToken)).toBe(true);
+      expect(authomatic.invalidateRefreshToken(refreshToken, secret)).toBe(true);
     });
     it('Should be false if token was not found', () => {
       // Make remove unsuccessful
-      authomatic = Authomatic({store: merge(fakeStore, {remove: jest.fn(() => false)})});
-      expect(authomatic.invalidateRefreshToken(refreshToken)).toBe(false);
+      authomatic = Authomatic(
+        {store: merge(fakeStore, {remove: jest.fn(() => false)}), jwt: fakeJWT}
+      );
+      expect(authomatic.invalidateRefreshToken(refreshToken, secret)).toBe(false);
     });
   });
   describe('#invalidateAllRefreshTokens', () => {
@@ -92,51 +70,13 @@ describe('authomatic', () => {
       expect(authomatic.invalidateAllRefreshTokens(userId)).toBe(false);
     });
   });
-  describe('#verify', () => {
-    it('should instruct jwt to verify the token', async () => {
-      await authomatic.verify(token, secret);
-      expect(fakeJWT.verify.mock.calls[0][0]).toBe(token);
-      expect(fakeJWT.verify.mock.calls[0][1]).toBe(secret);
-      expect(fakeJWT.verify.mock.calls[0][2]).toEqual(acceptableVerifyOptions);
-    });
-    it('should return jwt.verify results', async () => {
-      expect(await authomatic.verify(token, secret)).toBeTruthy();
-    });
-  });
-  describe('#refresh', () => {
-    it('should throw an error if the tokens mismatch', async () => {
-      const trustedToken = '123', oldToken = '1234';
-      expect.assertions(1);
-      authomatic = Authomatic({
-        // Make store return expected token
-        store: merge(fakeStore, {getAccessToken: jest.fn(() => trustedToken)}), jwt: fakeJWT
-      });
-      try {
-        await authomatic.refresh(refreshToken, oldToken, secret);
-      } catch(e) {
-        expect(e.name).toBe('InvalidAccessToken');
-      }
-    });
-    it('should throw an error if the refresh token expired', async () => {
-      expect.assertions(1);
-      authomatic = Authomatic({
-        // Make remove operation unsuccessful
-        store: merge(fakeStore, {remove: jest.fn(() => false)}), jwt: fakeJWT
-      });
-      try {
-        await authomatic.refresh(refreshToken, token, secret);
-      } catch(e) {
-        expect(e.name).toBe('RefreshTokenExpiredOrNotFound');
-      }
-    });
-  });
   describe('#sign', () => {
     it('should instruct jwt.sign to sign a token with correct arguments', async () => {
       await authomatic.sign('123', secret);
       const {exp, jti, ...payload} = fakeJWT.sign.mock.calls[0][0];
       expect(exp).toBeTruthy();
       expect(jti).toBeTruthy();
-      expect(payload).toEqual({pld: {}, rme: false, uid: '123'});
+      expect(payload).toEqual({pld: {}, rme: false, uid: '123', t: 'Authomatic-AT'});
       expect(fakeJWT.sign.mock.calls[0][1]).toBe(secret);
       expect(fakeJWT.sign.mock.calls[0][2]).toEqual(acceptableSignOptions);
     });
@@ -146,16 +86,16 @@ describe('authomatic', () => {
       const {exp, jti, ...payload} = fakeJWT.sign.mock.calls[0][0];
       expect(exp).toBeTruthy();
       expect(jti).toBeTruthy();
-      expect(payload).toEqual({pld: content, rme: false, uid: '123'});
+      expect(payload.pld).toEqual(content);
       expect(fakeJWT.sign.mock.calls[0][1]).toBe(secret);
       expect(fakeJWT.sign.mock.calls[0][2]).toEqual(acceptableSignOptions);
     });
     it('should return correct object', async () => {
       const object = await authomatic.sign('123', secret);
       expect(object).toEqual(expect.objectContaining({
-        accessToken: expect.any(String),
+        accessToken: expect.anything(),
         accessTokenExpiresAt: expect.any(Number),
-        refreshToken: expect.any(String),
+        refreshToken: expect.anything(),
         refreshTokenExpiresAt: expect.any(Number)
       }));
     });
