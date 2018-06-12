@@ -4,6 +4,7 @@
 [![Test Coverage](https://api.codeclimate.com/v1/badges/314b595549aca68c5c6c/test_coverage)](https://codeclimate.com/github/wearereasonablepeople/authomatic/test_coverage)
 [![dependencies Status](https://david-dm.org/wearereasonablepeople/authomatic/status.svg)](https://david-dm.org/wearereasonablepeople/authomatic)
 [![devDependencies Status](https://david-dm.org/awearereasonablepeople/authomatic/dev-status.svg)](https://david-dm.org/wearereasonablepeople/authomatic?type=dev)
+[![Greenkeeper badge](https://badges.greenkeeper.io/wearereasonablepeople/authomatic.svg)](https://greenkeeper.io/)
 
 ## Description
 An opinionated JWT library with sensible defaults that supports refresh and access tokens.
