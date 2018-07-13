@@ -21,7 +21,7 @@
     "tcomb": "^3.2.24"
   },
   "devDependencies": {
-    "authomatic-redis": "0.0.3",
+    "authomatic-redis": "1.0.0",
     "eslint": "^4.17.0",
     "eslint-config-warp": "^3.0.0",
     "jest": "^23.1.0",
