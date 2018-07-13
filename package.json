@@ -1,6 +1,6 @@
 {
   "name": "authomatic",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "An opinionated JWT library with sensible defaults that implements the complete token flow.",
   "main": "index.js",
   "scripts": {
