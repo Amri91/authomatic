@@ -1,13 +1,13 @@
 # authomatic
 [![Build Status](https://travis-ci.org/wearereasonablepeople/authomatic.svg?branch=master)](https://travis-ci.org/wearereasonablepeople/authomatic)
 [![Maintainability](https://api.codeclimate.com/v1/badges/314b595549aca68c5c6c/maintainability)](https://codeclimate.com/github/wearereasonablepeople/authomatic/maintainability)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/314b595549aca68c5c6c/test_coverage)](https://codeclimate.com/github/wearereasonablepeople/authomatic/test_coverage)
+[![Coverage Status](https://coveralls.io/repos/github/wearereasonablepeople/authomatic/badge.svg?branch=master)](https://coveralls.io/github/wearereasonablepeople/authomatic?branch=master)
 [![dependencies Status](https://david-dm.org/wearereasonablepeople/authomatic/status.svg)](https://david-dm.org/wearereasonablepeople/authomatic)
 [![devDependencies Status](https://david-dm.org/awearereasonablepeople/authomatic/dev-status.svg)](https://david-dm.org/wearereasonablepeople/authomatic?type=dev)
 [![Greenkeeper badge](https://badges.greenkeeper.io/wearereasonablepeople/authomatic.svg)](https://greenkeeper.io/)
 
 ## Description
-An opinionated JWT library with sensible defaults that supports refresh and access tokens.
+An authentication library that uses JWT for access and refresh tokens with sensible defaults.
 
 ## Install
 ```
@@ -37,6 +37,18 @@ const authomatic = new Authomatic({store});
 npm test
 ```
 
+## Notes about migrating from version 0.0.1 to 1
+1. Access and refresh tokens from those old versions will not work with the new ones. If you just upgraded, users will be required to relog.
+If that is undesirable, and you want a seamless transition use two instances of Authomatic, but do not sign new tokens (or refresh) with the old instance.
+1. The refresh method now accepts a 4th argument, verify options.
+1. The invalidate refresh token method now requires a secret.
+1. aud in sign options and audience in verify options are now strictly an array.
+1. RefreshTokenExpiredOrNotFound became RefreshTokenNotFound, the expiration error is throw by the 'jsonwebtoken' library.
+1. InvalidAccessToken became InvalidToken, it is for both refresh and access tokens.
+1. TokensMismatch error is thrown if refresh and access token do not match.
+
+The example has been updated to reflect all the new changes.
+
 # Documentation
 
 ## Members
@@ -49,8 +61,7 @@ npm test
 <dd><p>Verifies token, might throw jwt.verify errors</p>
 </dd>
 <dt><a href="#refresh">refresh</a> ⇒ <code><a href="#Tokens">Promise.&lt;Tokens&gt;</a></code></dt>
-<dd><p>Issues a new access token using a refresh token and an old token.
-There is no need to verify the old token provided because this method uses the stored one.</p>
+<dd><p>Issues a new access token using a refresh token and an old token (can be expired).</p>
 </dd>
 <dt><a href="#invalidateRefreshToken">invalidateRefreshToken</a> ⇒ <code>Promise.&lt;Boolean&gt;</code></dt>
 <dd><p>Invalidates refresh token</p>
@@ -70,6 +81,7 @@ There is no need to verify the old token provided because this method uses the s
 <dd><p>Regular JWT token.
 Its payload looks like this:</p>
 <pre><code class="language-javascript">{
+  &quot;t&quot;: &quot;Authomatic-AT&quot;,
   &quot;uid&quot;: &quot;userId&quot;,
   &quot;exp&quot;: &quot;someNumber&quot;,
   &quot;jti&quot;: &quot;randomBytes&quot;,
@@ -81,7 +93,18 @@ Its payload looks like this:</p>
 </code></pre>
 </dd>
 <dt><a href="#RefreshToken">RefreshToken</a> : <code>String</code></dt>
-<dd><p>A base64 encoded string.</p>
+<dd><p>regular JWT token.
+Its payload looks like this:</p>
+<pre><code class="language-javascript"> {
+   &quot;t&quot;: &quot;Authomatic-RT&quot;,
+   &quot;iss&quot;: &quot;Authomatic&quot;,
+   &quot;aud&quot;: [&quot;Authomatic&quot;]
+   &quot;uid&quot;: &quot;userId&quot;,
+   &quot;exp&quot;: &quot;someNumber&quot;,
+   &quot;jti&quot;: &quot;randomBytes&quot;,
+   &quot;accessTokenJTI&quot;: &quot;randomBytes&quot;
+ }
+</code></pre>
 </dd>
 <dt><a href="#Tokens">Tokens</a> : <code>Object</code></dt>
 <dd><p>Token pairs</p>
@@ -92,11 +115,14 @@ Its payload looks like this:</p>
 <dt><a href="#SignOptions">SignOptions</a> : <code>Object</code></dt>
 <dd><p>The allowed user options to for signing tokens</p>
 </dd>
-<dt><a href="#RefreshTokenExpiredOrNotFound">RefreshTokenExpiredOrNotFound</a> : <code>StandardError</code></dt>
-<dd><p>The refresh token has expired or was not found</p>
+<dt><a href="#RefreshTokenNotFound">RefreshTokenNotFound</a> : <code>StandardError</code></dt>
+<dd><p>The refresh token was not found.</p>
 </dd>
-<dt><a href="#InvalidAccessToken">InvalidAccessToken</a> : <code>StandardError</code></dt>
-<dd><p>The access token provided is invalid</p>
+<dt><a href="#TokensMismatch">TokensMismatch</a> : <code>StandardError</code></dt>
+<dd><p>The tokens provided do not match</p>
+</dd>
+<dt><a href="#InvalidToken">InvalidToken</a> : <code>StandardError</code></dt>
+<dd><p>The provided input is not a valid token.</p>
 </dd>
 </dl>
 
@@ -106,6 +132,10 @@ Its payload looks like this:</p>
 Returns access and refresh tokens
 
 **Kind**: global variable  
+**Throws**:
+
+- <code>TypeError</code> typeError if any param was not sent exactly as specified
+
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -124,6 +154,8 @@ Verifies token, might throw jwt.verify errors
 **Returns**: <code>String</code> - decoded token  
 **Throws**:
 
+- [<code>InvalidToken</code>](#InvalidToken) invalidToken
+- <code>TypeError</code> typeError if any param was not sent exactly as specified
 - JsonWebTokenError
 - TokenExpiredError
 Error info at [https://www.npmjs.com/package/jsonwebtoken#errors--codes](https://www.npmjs.com/package/jsonwebtoken#errors--codes)
@@ -138,14 +170,17 @@ Error info at [https://www.npmjs.com/package/jsonwebtoken#errors--codes](https:/
 <a name="refresh"></a>
 
 ## refresh ⇒ [<code>Promise.&lt;Tokens&gt;</code>](#Tokens)
-Issues a new access token using a refresh token and an old token.
-There is no need to verify the old token provided because this method uses the stored one.
+Issues a new access token using a refresh token and an old token (can be expired).
 
 **Kind**: global variable  
 **Throws**:
 
-- [<code>RefreshTokenExpiredOrNotFound</code>](#RefreshTokenExpiredOrNotFound) refreshTokenExpiredOrNotFound
-- [<code>InvalidAccessToken</code>](#InvalidAccessToken) invalidAccessToken
+- [<code>RefreshTokenNotFound</code>](#RefreshTokenNotFound) refreshTokenNotFound
+- [<code>TokensMismatch</code>](#TokensMismatch) tokensMismatch
+- <code>TypeError</code> typeError if any param was not sent exactly as specified
+- JsonWebTokenError
+- TokenExpiredError
+Error info at [https://www.npmjs.com/package/jsonwebtoken#errors--codes](https://www.npmjs.com/package/jsonwebtoken#errors--codes)
 
 
 | Param | Type | Description |
@@ -153,7 +188,7 @@ There is no need to verify the old token provided because this method uses the s
 | refreshToken | <code>String</code> |  |
 | accessToken | <code>String</code> |  |
 | secret | [<code>Secret</code>](#Secret) |  |
-| [signOptions] | [<code>SignOptions</code>](#SignOptions) | Options passed to jwt.sign |
+| signOptions | [<code>SignOptions</code>](#SignOptions) | Options passed to jwt.sign, ignoreExpiration will be set to true |
 
 <a name="invalidateRefreshToken"></a>
 
@@ -162,6 +197,14 @@ Invalidates refresh token
 
 **Kind**: global variable  
 **Returns**: <code>Promise.&lt;Boolean&gt;</code> - true if successful, false otherwise.  
+**Throws**:
+
+- <code>TypeError</code> typeError if any param was not sent exactly as specified
+- [<code>InvalidToken</code>](#InvalidToken) invalidToken
+- JsonWebTokenError
+- TokenExpiredError
+Error info at [https://www.npmjs.com/package/jsonwebtoken#errors--codes](https://www.npmjs.com/package/jsonwebtoken#errors--codes)
+
 
 | Param | Type |
 | --- | --- |
@@ -174,10 +217,14 @@ Invalidates all refresh tokens
 
 **Kind**: global variable  
 **Returns**: <code>Promise.&lt;Boolean&gt;</code> - true if successful, false otherwise.  
+**Throws**:
+
+- <code>TypeError</code> typeError if any param was not sent exactly as specified
+
 
 | Param | Type |
 | --- | --- |
-| userId | <code>String</code> \| <code>Number</code> | 
+| userId | <code>String</code> | 
 
 <a name="Secret"></a>
 
@@ -192,6 +239,7 @@ Regular JWT token.
 Its payload looks like this:
  ```js
 {
+  "t": "Authomatic-AT",
   "uid": "userId",
   "exp": "someNumber",
   "jti": "randomBytes",
@@ -206,7 +254,19 @@ Its payload looks like this:
 <a name="RefreshToken"></a>
 
 ## RefreshToken : <code>String</code>
-A base64 encoded string.
+regular JWT token.
+Its payload looks like this:
+ ```js
+ {
+   "t": "Authomatic-RT",
+   "iss": "Authomatic",
+   "aud": ["Authomatic"]
+   "uid": "userId",
+   "exp": "someNumber",
+   "jti": "randomBytes",
+   "accessTokenJTI": "randomBytes"
+ }
+ ```
 
 **Kind**: global typedef  
 <a name="Tokens"></a>
@@ -234,7 +294,7 @@ Verify options to be used when verifying tokens
 
 | Name | Type | Description |
 | --- | --- | --- |
-| [audience] | <code>String</code> \| <code>Array</code> \| <code>Object</code> | checks the aud field |
+| [audience] | <code>Array</code> \| <code>String</code> | checks the aud field |
 | [issuer] | <code>String</code> \| <code>Array</code> | checks the iss field |
 | [ignoreExpiration] | <code>Boolean</code> | if true, ignores the expiration check of access tokens |
 | [ignoreNotBefore] | <code>Boolean</code> | if true, ignores the not before check of access tokens |
@@ -254,81 +314,82 @@ The allowed user options to for signing tokens
 | Name | Type |
 | --- | --- |
 | [nbf] | <code>Number</code> | 
-| [aud] | <code>String</code> | 
+| [aud] | <code>Array</code> \| <code>String</code> | 
 | [iss] | <code>String</code> | 
 | [sub] | <code>String</code> | 
 
-<a name="RefreshTokenExpiredOrNotFound"></a>
+<a name="RefreshTokenNotFound"></a>
 
-## RefreshTokenExpiredOrNotFound : <code>StandardError</code>
-The refresh token has expired or was not found
-
-**Kind**: global typedef  
-**Properties**
-
-| Name | Type | Default |
-| --- | --- | --- |
-| [name] | <code>String</code> | <code>&#x27;RefreshTokenExpiredOrNotFound&#x27;</code> | 
-
-<a name="InvalidAccessToken"></a>
-
-## InvalidAccessToken : <code>StandardError</code>
-The access token provided is invalid
+## RefreshTokenNotFound : <code>StandardError</code>
+The refresh token was not found.
 
 **Kind**: global typedef  
 **Properties**
 
 | Name | Type | Default |
 | --- | --- | --- |
-| [name] | <code>String</code> | <code>&#x27;InvalidAccessToken&#x27;</code> | 
+| [name] | <code>String</code> | <code>&#x27;RefreshTokenNotFound&#x27;</code> | 
+
+<a name="TokensMismatch"></a>
+
+## TokensMismatch : <code>StandardError</code>
+The tokens provided do not match
+
+**Kind**: global typedef  
+**Properties**
+
+| Name | Type | Default |
+| --- | --- | --- |
+| [name] | <code>String</code> | <code>&#x27;TokensMismatch&#x27;</code> | 
+
+<a name="InvalidToken"></a>
+
+## InvalidToken : <code>StandardError</code>
+The provided input is not a valid token.
+
+**Kind**: global typedef  
+**Properties**
+
+| Name | Type | Default |
+| --- | --- | --- |
+| [name] | <code>String</code> | <code>&#x27;InvalidToken&#x27;</code> | 
 
 
 # Creating a store
 If you want to create a new store you need to expose the following functions:
 
-1- registerTokens
+1. add
 
 ```js
 /**
-* Register access token and refresh token for a user
+* Register token and refresh token to the user
 * @param {String} userId
-* @param {String} refreshToken
-* @param {String} accessToken
+* @param {String} refreshTokenJTI
+* @param {String} accessTokenJTI
 * @param {Number} ttl time to live in ms
 * @returns {Promise<Boolean>} returns true when created.
 */
-function registerTokens(userId, refreshToken, accessToken, ttl){...}
+function add(userId, refreshTokenJTI, accessTokenJTI, ttl){...}
 ```
 
-2- getAccessToken
-```js
-/**
-* Returns the user's token using the userId and the refresh token
-* @param userId
-* @param refreshToken
-* @returns {Promise<String>} the access token if found or null
-*/
-function getAccessToken(userId, refreshToken) {...}
-```
-
-3- remove
+2. remove
 ```js
 /**
 * Remove a single refresh token from the user
 * @param userId
-* @param refreshToken
+* @param refreshTokenJTI
 * @returns {Promise<Boolean>} true if found and deleted, otherwise false.
 */
-function remove(userId, refreshToken) {...}
+function remove(userId, refreshTokenJTI) {...}
 ```
 
-4- removeAll
+3. removeAll
 ```js
 /**
 * Removes all tokens for a particular user
 * @param userId
 * @returns {Promise<Boolean>} true if any were found and delete, false otherwise
 */
-function remove(userId, refreshToken) {...}
+function removeAll(userId) {...}
 ```
 You may need to expose a reference to the store if the user may need to handle connections during testing for example.

@@ -41,7 +41,7 @@ const verify = (ctx, next) => {
     return next();
   } catch (e) {
     return ctx.throw(
-      ['JsonWebTokenError', 'TokenExpiredError'].includes(e.name) ? 401 : 500,
+      ['JsonWebTokenError', 'InvalidToken', 'TokenExpiredError'].includes(e.name) ? 401 : 500,
       e.message
     );
   }
@@ -67,10 +67,13 @@ router
   const {accessToken, refreshToken} = ctx.request.body;
 
   try {
-    ctx.body = await authomatic.refresh(refreshToken, accessToken, secret);
+    ctx.body = await authomatic.refresh(refreshToken, accessToken, secret, {});
   } catch (e) {
     ctx.throw(
-      ['RefreshTokenExpiredOrNotFound', 'InvalidAccessToken'].includes(e.name) ? 400 : 500,
+      [
+        'RefreshTokenNotFound', 'TokensMismatch', 'TokenExpiredError',
+        'JsonWebTokenError', 'InvalidToken'
+      ].includes(e.name) ? 400 : 500,
       e.message
     );
   }
@@ -78,7 +81,7 @@ router
 .delete('/refreshTokens/:refreshToken', async ctx => {
   const {refreshToken} = ctx.params;
 
-  if(await authomatic.invalidateRefreshToken(decodeURIComponent(refreshToken))) {
+  if(await authomatic.invalidateRefreshToken(decodeURIComponent(refreshToken), secret)) {
     ctx.status = 204;
   } else {
     ctx.status = 404;
