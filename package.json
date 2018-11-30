@@ -30,7 +30,7 @@
     "koa": "^2.4.1",
     "koa-bodyparser": "^4.2.0",
     "koa-router": "^7.4.0",
-    "ramda": "^0.25.0",
+    "ramda": "^0.26.0",
     "redis": "^2.8.0",
     "redisscan": "^2.0.0",
     "supertest": "^3.0.0"
