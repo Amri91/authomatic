@@ -33,7 +33,7 @@
     "ramda": "^0.26.0",
     "redis": "^2.8.0",
     "redisscan": "^2.0.0",
-    "supertest": "^3.0.0"
+    "supertest": "^3.4.1"
   },
   "keywords": [
     "authentication",
