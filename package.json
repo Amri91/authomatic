@@ -16,7 +16,7 @@
   "author": "Abdulrahman Amri",
   "license": "MIT",
   "dependencies": {
-    "jsonwebtoken": "^8.3.0",
+    "jsonwebtoken": "^8.5.0",
     "standard-error": "^1.1.0",
     "tcomb": "^3.2.24"
   },
