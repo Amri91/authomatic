@@ -24,7 +24,7 @@
     "authomatic-redis": "^1.0.0",
     "coveralls": "^3.0.1",
     "eslint-config-warp": "^3.0.0",
-    "eslint": "^5.0.0",
+    "eslint": "^6.0.1",
     "jest": "^23.1.0",
     "jsdoc-to-markdown": "^5.0.0",
     "koa": "^2.4.1",
