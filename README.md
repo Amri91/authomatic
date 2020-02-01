@@ -4,7 +4,6 @@
 [![Coverage Status](https://coveralls.io/repos/github/wearereasonablepeople/authomatic/badge.svg?branch=master)](https://coveralls.io/github/wearereasonablepeople/authomatic?branch=master)
 [![dependencies Status](https://david-dm.org/wearereasonablepeople/authomatic/status.svg)](https://david-dm.org/wearereasonablepeople/authomatic)
 [![devDependencies Status](https://david-dm.org/awearereasonablepeople/authomatic/dev-status.svg)](https://david-dm.org/wearereasonablepeople/authomatic?type=dev)
-[![Greenkeeper badge](https://badges.greenkeeper.io/wearereasonablepeople/authomatic.svg)](https://greenkeeper.io/)
 
 ## Description
 An authentication library that uses JWT for access and refresh tokens with sensible defaults.
