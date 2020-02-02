@@ -1,10 +1,6 @@
 # authomatic
-[![Build Status](https://travis-ci.org/wearereasonablepeople/authomatic.svg?branch=master)](https://travis-ci.org/wearereasonablepeople/authomatic)
-[![Maintainability](https://api.codeclimate.com/v1/badges/314b595549aca68c5c6c/maintainability)](https://codeclimate.com/github/wearereasonablepeople/authomatic/maintainability)
-[![Coverage Status](https://coveralls.io/repos/github/wearereasonablepeople/authomatic/badge.svg?branch=master)](https://coveralls.io/github/wearereasonablepeople/authomatic?branch=master)
-[![dependencies Status](https://david-dm.org/wearereasonablepeople/authomatic/status.svg)](https://david-dm.org/wearereasonablepeople/authomatic)
-[![devDependencies Status](https://david-dm.org/awearereasonablepeople/authomatic/dev-status.svg)](https://david-dm.org/wearereasonablepeople/authomatic?type=dev)
-[![Greenkeeper badge](https://badges.greenkeeper.io/wearereasonablepeople/authomatic.svg)](https://greenkeeper.io/)
+[![Build Status](https://travis-ci.org/Amri91/authomatic.svg?branch=master)](https://travis-ci.org/Amri91/authomatic)
+[![Maintainability](https://api.codeclimate.com/v1/badges/d990daf2cfee6fd1cb3e/maintainability)](https://codeclimate.com/github/Amri91/authomatic/maintainability)
 
 ## Description
 An authentication library that uses JWT for access and refresh tokens with sensible defaults.

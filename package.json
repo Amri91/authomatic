@@ -1,6 +1,6 @@
 {
   "name": "authomatic",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "An authentication library that uses JWT for access and refresh tokens with sensible defaults.",
   "main": "index.js",
   "scripts": {
@@ -16,24 +16,24 @@
   "author": "Abdulrahman Amri",
   "license": "MIT",
   "dependencies": {
-    "jsonwebtoken": "^8.3.0",
+    "jsonwebtoken": "^8.5.1",
     "standard-error": "^1.1.0",
-    "tcomb": "^3.2.24"
+    "tcomb": "^3.2.29"
   },
   "devDependencies": {
     "authomatic-redis": "^1.0.0",
-    "coveralls": "^3.0.1",
+    "coveralls": "^3.0.9",
     "eslint-config-warp": "^3.0.0",
-    "eslint": "^5.0.0",
-    "jest": "^23.1.0",
-    "jsdoc-to-markdown": "^5.0.0",
-    "koa": "^2.4.1",
-    "koa-bodyparser": "^4.2.0",
-    "koa-router": "^7.4.0",
-    "ramda": "^0.26.0",
+    "eslint": "^6.8.0",
+    "jest": "^25.1.0",
+    "jsdoc-to-markdown": "^5.0.3",
+    "koa": "^2.11.0",
+    "koa-bodyparser": "^4.2.1",
+    "koa-router": "^8.0.6",
+    "ramda": "^0.26.1",
     "redis": "^2.8.0",
     "redisscan": "^2.0.0",
-    "supertest": "^3.0.0"
+    "supertest": "^4.0.2"
   },
   "keywords": [
     "authentication",
