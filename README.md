@@ -11,7 +11,7 @@ npm install authomatic
 ```
 
 ## Available stores
-[Redis](https://github.com/wearereasonablepeople/authomatic-redis)
+[Redis](https://github.com/amri91/authomatic-redis)
 
 Please create an issue if you need another store.
 

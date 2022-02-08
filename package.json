@@ -1,6 +1,6 @@
 {
   "name": "authomatic",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "An authentication library that uses JWT for access and refresh tokens with sensible defaults.",
   "main": "index.js",
   "scripts": {
@@ -12,28 +12,32 @@
     "redis:start": "docker run --name redis-test -p 6379:6379 -d redis",
     "redis:remove": "docker rm -f redis-test &> /dev/null || true"
   },
-  "repository": "https://github.com/wearereasonablepeople/authomatic",
+  "repository": "https://github.com/amri91/authomatic",
   "author": "Abdulrahman Amri",
   "license": "MIT",
+  "engines": {
+    "node": ">=10.x"
+  },
   "dependencies": {
     "jsonwebtoken": "^8.5.1",
     "standard-error": "^1.1.0",
     "tcomb": "^3.2.29"
   },
   "devDependencies": {
-    "authomatic-redis": "^1.0.0",
-    "coveralls": "^3.0.9",
-    "eslint-config-warp": "^3.0.0",
-    "eslint": "^6.8.0",
-    "jest": "^25.1.0",
-    "jsdoc-to-markdown": "^5.0.3",
-    "koa": "^2.11.0",
-    "koa-bodyparser": "^4.2.1",
-    "koa-router": "^8.0.6",
-    "ramda": "^0.26.1",
-    "redis": "^2.8.0",
+    "authomatic-redis": "^1.0.1",
+    "coveralls": "^3.1.1",
+    "eslint-config-warp": "^6.1.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint": "^7.12.1",
+    "jest": "^27.5.0",
+    "jsdoc-to-markdown": "^7.1.1",
+    "koa": "^2.13.4",
+    "koa-bodyparser": "^4.3.0",
+    "koa-router": "^10.1.1",
+    "ramda": "^0.28.0",
+    "redis": "^3.1.1",
     "redisscan": "^2.0.0",
-    "supertest": "^4.0.2"
+    "supertest": "^6.2.2"
   },
   "keywords": [
     "authentication",
