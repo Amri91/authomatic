@@ -1,6 +1,6 @@
 'use strict';
 
-const {omit, merge} = require('ramda');
+const {omit, mergeRight} = require('ramda');
 
 const testUtilities = require('./testUtilities');
 
@@ -51,7 +51,7 @@ describe('authomatic', () => {
     it('Should be false if token was not found', () => {
       // Make remove unsuccessful
       authomatic = Authomatic(
-        {store: merge(fakeStore, {remove: jest.fn(() => false)}), jwt: fakeJWT}
+        {store: mergeRight(fakeStore, {remove: jest.fn(() => false)}), jwt: fakeJWT}
       );
       expect(authomatic.invalidateRefreshToken(refreshToken, secret)).toBe(false);
     });
@@ -66,7 +66,7 @@ describe('authomatic', () => {
     });
     it('Should be falsey if no tokens were found', () => {
       // make removeAll unsuccessful
-      authomatic = Authomatic({store: merge(fakeStore, {removeAll: jest.fn(() => false)})});
+      authomatic = Authomatic({store: mergeRight(fakeStore, {removeAll: jest.fn(() => false)})});
       expect(authomatic.invalidateAllRefreshTokens(userId)).toBe(false);
     });
   });
