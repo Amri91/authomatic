@@ -1,6 +1,6 @@
 {
   "name": "authomatic",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "An authentication library that uses JWT for access and refresh tokens with sensible defaults.",
   "main": "index.js",
   "scripts": {
