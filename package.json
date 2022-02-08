@@ -12,7 +12,7 @@
     "redis:start": "docker run --name redis-test -p 6379:6379 -d redis",
     "redis:remove": "docker rm -f redis-test &> /dev/null || true"
   },
-  "repository": "https://github.com/wearereasonablepeople/authomatic",
+  "repository": "https://github.com/amri91/authomatic",
   "author": "Abdulrahman Amri",
   "license": "MIT",
   "engines": {
