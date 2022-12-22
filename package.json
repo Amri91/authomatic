@@ -19,7 +19,7 @@
     "node": ">=10.x"
   },
   "dependencies": {
-    "jsonwebtoken": "^8.5.1",
+    "jsonwebtoken": "^9.0.0",
     "standard-error": "^1.1.0",
     "tcomb": "^3.2.29"
   },
